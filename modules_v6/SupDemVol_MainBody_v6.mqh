@@ -29,12 +29,6 @@ enum ENUM_VOLUME_INTENSIDADE
     VOLUME_EXTREMO        // Volume extremo
 };
 
-enum ENUM_PALETA_PREMIUM {
-   PALETA_PREMIUM_ATRATO = 0, // Premium 1: acinzentado + terroso
-   PALETA_PREMIUM_SOMBRA = 1, // Premium 2: azul frio + grafite
-   PALETA_PREMIUM_COBRE  = 2  // Premium 3: cobre escuro + azul petróleo
-};
-
 enum ENUM_POSICAO_HORIZONTAL_TEXTO_ZONA {
    TEXTO_ZONA_ESQUERDA = 0,
    TEXTO_ZONA_CENTRO   = 1,
@@ -57,147 +51,116 @@ enum ENUM_MODO_CONFLITO_SINAL_ENRIQ {
 //+------------------------------------------------------------------+
 //| Parâmetros de entrada                                           |
 //+------------------------------------------------------------------+
-// Parâmetros do Volume
-input int      InpPeriodoMedia = 20;                // Período para Média do Volume
-input double   InpMultiplicadorDesvio = 3.5;        // Multiplicador do Desvio Padrão
-input ENUM_PALETA_PREMIUM InpPaletaVisual = PALETA_PREMIUM_ATRATO;
-input bool     InpUsarPaletaPremium = true;         // Ignora cor manual e usa tema premium selecionado
-input color    InpCorPaletaElegante = C'46,123,214'; // Cor elegante principal da v4
-input color    InpCorPaletaVermelha = C'188,36,52';  // Cor vermelha principal da v4
+input group "01. Basico"
+input int      InpPeriodoMedia = 20;                // Periodo da media de volume
+input double   InpMultiplicadorDesvio = 3.5;        // Multiplicador do desvio padrao
+input bool     InpMostrarProfile = true;            // Exibe zonas no grafico
+input int      InpDiasAnalise = 1;                  // Janela principal de analise (dias)
+input int      InpPeriodoATR = 14;                  // Periodo ATR interno (fallback tecnico)
 
-// Parâmetros dos Pivôs
-input string   InpSeparador1 = "═══ PIVÔS DINÂMICOS ═══";           // ═══════════════════════
-input bool     InpMostrarProfile = true;            // Mostrar os Pivôs
-input int      InpNumeroPivos = 7;                  // Número de Pivôs (máximo 20)
-input double   InpMaxATRPercent = 35.0;             // Máximo % do ATR para ALTURA do pivô
-input string   InpSeparadorMerge = "═══ REGRAS DE MERGE SEGURAS ═══";
-input double   InpMergeATRPercent = 80.0;           // % do ATR para MERGE automático de pivôs próximos
-input double   InpDistanciaMinATR = 50.0;           // Distância mínima entre pivôs (% do ATR)  
-input double   InpFatorDistanciaMinCriacao = 1.60;  // Multiplica a distância mínima para criar nova zona
-input double   InpFatorGapPorSomaMerge = 1.00;      // Limite de merge por intervalo entre zonas (1.00 = soma das alturas)
-input double   InpFatorAlturaBarraOrigem = 0.35;    // Fração da barra de origem para altura da zona (0.05..1.00)
-input double   InpFatorAbsorcaoMerge = 0.30;       // Fração da zona absorvida que é engolida (0.00..1.00)
-input double   InpPesoDistanciaPrecoNoSlot = 0.35;  // Peso para proteger zonas perto do preço no merge sem slot
-input int      InpZigZagDepth = 12;                 // ZigZag importado: Depth
-input int      InpZigZagDeviation = 5;              // ZigZag importado: Deviation
-input int      InpZigZagBackstep = 3;               // ZigZag importado: Backstep
-input int      InpZigZagMaxBarras = 500;            // Máximo de barras para média de distância zig-zag
-input double   InpDistMinFatorZigZag = 1.0;         // Fator da distância média zig-zag (1.0 = média pura)
-input int      InpTempoAssentamento = 20;           // Barras para considerar 'assentado' (anti pisca-pisca)
-input int      InpDiasAnalise = 1;                  // Dias para análise (sempre do dia atual)
+input group "02. Criacao e Merge"
+input double   InpMaxATRPercent = 35.0;             // Altura maxima da zona (escala relativa; com SemATR usa faixa do dia)
+input double   InpDistanciaMinATR = 50.0;           // Distancia minima entre zonas (escala relativa; com SemATR usa faixa do dia)
+input double   InpFatorDistanciaMinCriacao = 1.60;  // Multiplicador da distancia minima de criacao
+input double   InpFatorGapPorSomaMerge = 1.00;      // Gap maximo por soma de alturas (0..1)
+input double   InpFatorAlturaBarraOrigem = 0.35;    // Fracao da barra origem para altura da zona
+input double   InpFatorAbsorcaoMerge = 0.30;        // Fracao da zona absorvida incorporada
+input int      InpBarrasProtecaoZonaRecemCriada = 1; // Bloqueio de absorcao imediata
+input bool     InpEnriquecimentoToqueSomenteAcimaBanda = false; // Toque so enriquece com volume acima da banda
+input ENUM_MODO_CONFLITO_SINAL_ENRIQ InpModoConflitoSinalEnriquecimento = CONFLITO_SINAL_MIX_SOMBRA; // Regra de conflito buy/sell
+input int      InpTempoAssentamento = 20;           // Barras para confirmar assentamento
+input bool     InpHabilitarTravaAncora = true;      // Reaplica ancora das zonas a cada ciclo
 
-// Parâmetros de Validação  
-input string   InpSeparador2 = "═══ ROMPIMENTO E ESTABILIZAÇÃO ═══"; // ═══════════════════════
-input int      InpBarrasConfirmacao = 2;            // Barras de Confirmação do Rompimento
-input double   InpToleranciaRompimento = 0.2;       // Tolerância de Rompimento (% do preço)
+input group "03. Organizacao Continua"
+input bool     InpOrganizacaoEmBarraFechada = true; // Roda organizacao em barra fechada
+input int      InpOrganizacaoGatilhoZonas = 7;      // A partir deste total, organiza agressivo
+input int      InpOrganizacaoLimiteDuroZonas = 10;  // Limite absoluto de zonas
+input int      InpOrganizacaoAlvoNormal = 7;        // Alvo quando ha gap elegivel
+input int      InpOrganizacaoAlvoSemGap = 6;        // Alvo quando nao ha gap elegivel
+input double   InpOrganizacaoFatorGapMaiorZona = 2.0; // Gap elegivel relativo a maior zona
+input int      InpOrganizacaoMaxAcoesPorBarra = 20; // Maximo de acoes por ciclo
+input double   InpShvedFractalFastFactor = 3.0;     // Fator fractal rapido (inspiracao Shved)
+input double   InpShvedFractalSlowFactor = 6.0;     // Fator fractal lento (inspiracao Shved)
+input int      InpShvedLookbackBarras = 1000;       // Lookback de fractais
 
-// Parâmetros Visuais - PROGRESS BAR DE VOLUME
-input string   InpSeparador3 = "═══ VISUAL PROGRESS BAR ═══";        // ═══════════════════════
-input color    InpCorVolumeBaixo = C'46,123,214';    // Cor para Volume Baixo
-input color    InpCorVolumeMedio = C'46,123,214';    // Cor para Volume Medio
-input color    InpCorVolumeAlto = C'188,36,52';      // Cor para Volume Alto
-input color    InpCorVolumeExtremo = C'188,36,52';   // Cor para Volume Extremo
-input color    InpCorZonaSuporte = C'46,123,214';    // Cor elegante da zona
-input color    InpCorZonaResistencia = C'188,36,52'; // Cor vermelha da zona
-input color    InpCorRompido = C'188,36,52';         // Cor vermelha para rompido
-input color    InpCorProgressBar = C'46,123,214';    // Cor elegante da progress bar
-input int      InpLarguraLinhas = 2;                // Largura das Linhas
-input int      InpTransparenciaZonas = 120;         // Transparência das Zonas (0-255)
-input int      InpTransparenciaProgress = 220;      // Transparência da Progress Bar (0-255)
-input bool     InpMostrarVolumeTexto = true;        // Mostrar percentual simples nas zonas
-input bool     InpExibirValoresZona = true;         // Chave mestre para exibir valores nas zonas
-input ENUM_POSICAO_HORIZONTAL_TEXTO_ZONA InpPosicaoHorizontalTextoZona = TEXTO_ZONA_DIREITA; // Posição horizontal dos valores
-input double   InpPosicaoVerticalTextoZona = 0.50;  // 0.00=base da zona, 1.00=topo da zona
-input int      InpDeslocamentoTextoBarras = 0;      // Deslocamento horizontal do texto (em barras)
-input bool     InpMostrarProgressBar = false;       // (Desativado) Progress Bar de Volume
-input bool     InpExibirFaixaVolumeDireita = false; // Exibe a faixa de progresso no recuo direito
-input bool     InpDesenharZonaAteRecuo = true;      // Estende a zona ate o recuo direito (sem progress bar)
-input bool     InpExibirPainelVolume = true;        // Exibir painel de volume (histograma/banda/zero) ao carregar
-input bool     InpAtualizarUIApenasBarraNova = true; // Reduz pisca-pisca: atualiza UI só em barra nova/mudança
-input bool     InpLogDetalhado = true;              // Log detalhado (pode deixar lento/ruidoso)
-input bool     InpLogBloqueiosMerge = true;         // Loga bloqueios de merge (cooldown/altura/distância)
-input bool     InpExibirLogEnriquecimentoNoGrafico = true; // Mostra no chart os ultimos enriquecimentos
-input int      InpLinhasLogEnriquecimento = 6;      // Linhas do log de enriquecimento em tela (5..12)
+input group "04. Percentuais e Distribuicao"
+input bool     InpDistribuicaoSomentePico = true;   // Distribuicao baseada em barras acima da banda
+input bool     InpConservacaoVolumeAltoEstrita = true; // Conserva massa de volume alto na janela
+input bool     InpAplicarRateioRetroativoNasZonas = false; // Reescreve volume da zona com rateio
+input bool     InpPercentualNominalSimples = true;  // Percentual nominal simples entre zonas
+input bool     InpEscalaRelativaSemATR = true;      // Usa faixa diaria no lugar de ATR
+input double   InpEscalaRelativaFatorFaixaDia = 0.10; // Fator da faixa diaria
+input double   InpEscalaRelativaMinPctPreco = 0.05; // Piso da escala relativa em % do preco
+input int      InpJanelaInicioDiaBarras = 2;        // Janela de prioridade no inicio do dia
+input double   InpPesoMaxVolDiaAnterior = 1.20;     // Peso para maximo de volume do dia anterior
+input double   InpPesoMaxVolDiaAtual = 1.08;        // Peso para maximo de volume do dia atual
+input double   InpPesoExtremosDia = 1.06;           // Peso para zonas perto de extremos diarios
+input double   InpRedutorZonaVencida = 0.92;        // Redutor de zonas vencidas
+
+input group "05. Visual Zonas"
+input color    InpCorPaletaElegante = C'46,123,214'; // Cor base BUY
+input color    InpCorPaletaVermelha = C'188,36,52';  // Cor base SELL
+input int      InpLarguraLinhas = 2;                // Largura base das zonas
+input int      InpTransparenciaZonas = 120;         // Transparencia das zonas (0-255)
+input int      InpAlturaMinimaZonaPontos = 2;       // Altura minima da zona em pontos
+input int      InpExtensaoTemporalZona = 50;        // Extensao horizontal ao desenhar
+input int      InpExtensaoTemporalCoordenada = 100; // Extensao horizontal para atualizar coordenadas
+input bool     InpDesenharZonaAteRecuo = true;      // Estende zona ate o recuo direito
+input bool     InpExibirFaixaVolumeDireita = false; // Exibe faixa no recuo direito
+input bool     InpExibirValoresZona = true;         // Exibe valores nas zonas
+input ENUM_POSICAO_HORIZONTAL_TEXTO_ZONA InpPosicaoHorizontalTextoZona = TEXTO_ZONA_DIREITA; // Posicao horizontal dos valores
+input double   InpPosicaoVerticalTextoZona = 0.50;  // Posicao vertical dos valores (0..1)
+input int      InpDeslocamentoTextoBarras = 0;      // Deslocamento horizontal dos valores em barras
+input int      InpTamanhoFonteTextoZona = 8;        // Fonte do texto das zonas
+input bool     InpAtualizarUIApenasBarraNova = true; // Atualiza UI apenas em barra nova
+
+input group "06. Linhas de Referencia"
+input bool     InpMostrarLinhaMaiorMaxima = true;   // Exibe linha da maior maxima
+input int      InpPeriodoLinhaMaiorMaxima = 14;     // Periodo da maior maxima
+input color    InpCorLinhaMaiorMaxima = C'188,36,52'; // Cor da linha maior maxima
+input ENUM_LINE_STYLE InpEstiloLinhaMaiorMaxima = STYLE_DASHDOT; // Estilo da linha maior maxima
+input int      InpLarguraLinhaMaiorMaxima = 1;      // Largura da linha maior maxima
+input bool     InpMaximaReal = true;                // Ancora max/min ate violacao
+input bool     InpMostrarLinhaMenorMinima = true;   // Exibe linha da menor minima
+input int      InpPeriodoLinhaMenorMinima = 14;     // Periodo da menor minima
+input color    InpCorLinhaMenorMinima = C'46,123,214'; // Cor da linha menor minima
+input ENUM_LINE_STYLE InpEstiloLinhaMenorMinima = STYLE_DOT; // Estilo da linha menor minima
+input int      InpLarguraLinhaMenorMinima = 1;      // Largura da linha menor minima
+
+input group "07. Painel e Logs"
+input bool     InpExibirPainelVolume = true;        // Exibe subjanela de volume ao iniciar
+input bool     InpLogDetalhado = true;              // Log detalhado geral
+input bool     InpLogBloqueiosMerge = true;         // Log especifico de bloqueios de merge
+input bool     InpExibirLogEnriquecimentoNoGrafico = true; // Exibe ultimos eventos no chart
+input int      InpLinhasLogEnriquecimento = 6;      // Linhas no painel de enriquecimento
 input ENUM_POSICAO_PAINEL_LOG InpPosicaoPainelLogEnriquecimento = PAINEL_LOG_SUP_ESQ; // Canto do painel de log
-input int      InpPainelLogOffsetX = 12;            // Offset horizontal do painel (px)
-input int      InpPainelLogOffsetY = 40;            // Offset vertical do painel (px)
-input int      InpPainelLogFonteTamanho = 9;        // Tamanho da fonte do painel de log
-input color    InpPainelLogCorTexto = clrWhite;     // Cor do texto do painel de log
-input bool     InpExibirPainelBalanceCV = true;     // Mostra debug geral de compras/vendas (azul/vermelho)
-input int      InpPainelBalanceOffsetX = 12;        // Offset horizontal do painel de balance CV (px)
-input int      InpPainelBalanceOffsetY = 14;        // Offset vertical do painel de balance CV (px)
-input int      InpPainelBalanceFonteTamanho = 16;   // Fonte do painel de balance CV
-input string   InpSeparadorLinhaMax = "═══ LINHA MAIOR MÁXIMA ═══";
-input bool     InpMostrarLinhaMaiorMaxima = true;   // Exibe linha da maior máxima dos últimos X períodos
-input int      InpPeriodoLinhaMaiorMaxima = 14;     // Quantidade de períodos para maior máxima
-input color    InpCorLinhaMaiorMaxima = C'188,36,52'; // Cor da linha da maior maxima
-input ENUM_LINE_STYLE InpEstiloLinhaMaiorMaxima = STYLE_DASHDOT; // Estilo da linha
-input int      InpLarguraLinhaMaiorMaxima = 1;      // Largura da linha
-input bool     InpMaximaReal = true;                // Sim: ancora máxima/mínima até violação
-input string   InpSeparadorLinhaMin = "═══ LINHA MENOR MÍNIMA ═══";
-input bool     InpMostrarLinhaMenorMinima = true;   // Exibe linha da menor mínima dos últimos X períodos
-input int      InpPeriodoLinhaMenorMinima = 14;     // Quantidade de períodos para menor mínima
-input color    InpCorLinhaMenorMinima = C'46,123,214'; // Cor da linha da menor minima
-input ENUM_LINE_STYLE InpEstiloLinhaMenorMinima = STYLE_DOT; // Estilo da linha
-input int      InpLarguraLinhaMenorMinima = 1;      // Largura da linha
-input string   InpSeparadorOrganizacaoDiaria = "═══ ORGANIZACAO CONTINUA (PRIORIDADE) ═══";
-input bool     InpOrganizacaoEmBarraFechada = true; // Organiza em toda barra fechada
-input int      InpOrganizacaoGatilhoZonas = 7;      // A partir deste número, organizador entra agressivo
-input int      InpOrganizacaoLimiteDuroZonas = 10;  // Nunca manter acima deste número após ciclo
-input int      InpOrganizacaoAlvoNormal = 7;        // Alvo quando há merges elegíveis
-input int      InpOrganizacaoAlvoSemGap = 6;        // Alvo quando não há gap elegível para merge
-input double   InpOrganizacaoFatorGapMaiorZona = 2.0; // Gap elegível: dist < fator * maior_altura
-input int      InpOrganizacaoMaxAcoesPorBarra = 20; // Segurança de iterações por barra
-input double   InpShvedFractalFastFactor = 3.0;     // Inspiração Shved: fator fractal rápido
-input double   InpShvedFractalSlowFactor = 6.0;     // Inspiração Shved: fator fractal lento
-input int      InpShvedLookbackBarras = 1000;       // Barras para buscar âncora fractal
-input string   InpSeparadorAvancado = "═══ AJUSTES AVANÇADOS EXPOSTOS ═══";
-input int      InpBarrasProtecaoZonaRecemCriada = 1; // Proteção contra absorção imediata
-input bool     InpHabilitarMergeMesmaBarra = true;  // Permite merge quando uma barra toca mais de uma zona
-input bool     InpEnriquecimentoToqueSomenteAcimaBanda = false; // ON: toque só enriquece se volume > banda; OFF: qualquer toque enriquece
-input ENUM_MODO_CONFLITO_SINAL_ENRIQ InpModoConflitoSinalEnriquecimento = CONFLITO_SINAL_MIX_SOMBRA; // HIBRIDO: soma; SUBTRAIR: reduz; MIX_SOMBRA: divide buy/sell por sombras
-input bool     InpHabilitarTravaAncora = true;      // Reaplica âncora a cada ciclo
-input int      InpAlturaMinimaZonaPontos = 2;       // Espessura mínima da zona em pontos
-input int      InpExtensaoTemporalZona = 50;        // Extensão horizontal da zona ao desenhar
-input int      InpExtensaoTemporalCoordenada = 100; // Extensão usada na atualização das coordenadas
-input double   InpMargemVerticalProgress = 0.10;    // Margem vertical da progress bar (0.0..0.45)
-input double   InpFallbackAlturaProgressATR = 0.10; // Fator ATR quando altura da zona for inválida
-input int      InpFallbackAlturaProgressPontos = 10; // Mínimo em pontos no fallback da progress bar
-input int      InpPeriodoATR = 14;                  // Período do ATR interno
-input int      InpVizinhancaPivotBarras = 2;        // Barras de vizinhança para detectar topo/fundo
-input double   InpVolumeRatioMedio = 1.5;           // Limiar para VOLUME_MEDIO
-input double   InpVolumeRatioAlto = 2.0;            // Limiar para VOLUME_ALTO
-input double   InpVolumeRatioExtremo = 3.0;         // Limiar para VOLUME_EXTREMO
-input int      InpDiasReferenciaOrigem = 2;         // Dias para normalizar score da origem (1..2)
-input double   InpPesoOrigemVolume = 0.70;          // Peso do volume na espessura da zona de origem
-input double   InpPesoOrigemSombra = 0.25;          // Peso da sombra dominante na espessura
-input double   InpPesoOrigemCorpo = 0.05;           // Peso do corpo do candle na espessura
-input double   InpToleranciaDominioSombra = 0.05;   // Tolerancia para definir sombra dominante
-input bool     InpDistribuicaoSomentePico = true;   // Distribuição usa só barras acima da banda
-input bool     InpConservacaoVolumeAltoEstrita = true; // Força soma das zonas = soma dos volumes acima da banda (janela)
-input bool     InpAplicarRateioRetroativoNasZonas = false; // ON: reescreve volume da zona com rateio da janela; OFF: soma apenas volume incremental do evento
-input bool     InpRatearVolumeSemIntersecao = true; // Sem interseção, envia 100% para zona mais próxima
-input bool     InpPercentualNominalSimples = true;  // Percentual simples por volume nominal (sem pesos diários)
-input bool     InpEscalaRelativaSemATR = true;      // Distâncias/alturas usam faixa diária em vez de ATR
-input double   InpEscalaRelativaFatorFaixaDia = 0.10; // Fator aplicado à faixa diária para a escala relativa
-input double   InpEscalaRelativaMinPctPreco = 0.05; // Piso da escala relativa em % do preço
-input int      InpJanelaInicioDiaBarras = 2;        // Prioridade do dia anterior nas primeiras barras
-input double   InpPesoMaxVolDiaAnterior = 1.20;     // Peso do máximo volume do dia anterior no início do dia
-input double   InpPesoMaxVolDiaAtual = 1.08;        // Peso do máximo volume do dia atual
-input double   InpPesoExtremosDia = 1.06;           // Peso para zonas próximas das máximas/mínimas diária
-input double   InpRedutorZonaVencida = 0.92;        // Reduz peso quando zona já foi vencida
-input double   InpPesoScoreProximidade = 0.35;      // Peso no score de compactacao (overflow)
-input double   InpPesoScoreDistanciaPreco = 0.25;   // Peso no score de compactacao (overflow)
-input double   InpPesoScoreBaixoVolume = 0.25;      // Peso no score de compactacao (overflow)
-input double   InpPesoScoreAntiguidade = 0.15;      // Peso no score de compactacao (overflow)
-input int      InpBarrasExtrasHistorico = 10;       // Barras extras mínimas além da média para liberar cálculo
-input double   InpFatorAlturaMinBarraOrigem = 0.05; // Clamp mínimo do fator de altura da barra de origem
-input double   InpFatorAlturaMaxBarraOrigem = 1.00; // Clamp máximo do fator de altura da barra de origem
-input int      InpFaixaEstreitaBucketPontos = 10;   // Faixa em pontos para bucket central no overflow
-input int      InpMinBarrasZigZagMedia = 20;        // Mínimo de barras para média de distância ZigZag
-input double   InpToleranciaDuplicidadePivotPontos = 0.5; // Tolerância em pontos para ignorar pivô ZigZag duplicado
-input double   InpAtrFallbackEmErro = 0.01;         // ATR fallback quando houver erro/índice inválido
-input int      InpTamanhoFonteTextoZona = 8;        // Fonte do texto exibido nas zonas
+input int      InpPainelLogOffsetX = 12;            // Offset X do painel de log
+input int      InpPainelLogOffsetY = 40;            // Offset Y do painel de log
+input int      InpPainelLogFonteTamanho = 9;        // Fonte do painel de log
+input color    InpPainelLogCorTexto = clrWhite;     // Cor do painel de log
+input bool     InpExibirPainelBalanceCV = true;     // Exibe painel BUY/SELL geral
+input int      InpPainelBalanceOffsetX = 12;        // Offset X do painel BUY/SELL
+input int      InpPainelBalanceOffsetY = 14;        // Offset Y do painel BUY/SELL
+input int      InpPainelBalanceFonteTamanho = 16;   // Fonte do painel BUY/SELL
+
+input group "08. Tecnico (Avancado)"
+input int      InpVizinhancaPivotBarras = 2;        // Vizinhanca para classificar topo/fundo
+input int      InpZigZagDepth = 12;                 // ZigZag depth
+input int      InpZigZagDeviation = 5;              // ZigZag deviation
+input int      InpZigZagBackstep = 3;               // ZigZag backstep
+input double   InpDistMinFatorZigZag = 1.0;         // Fator da distancia zigzag
+input double   InpVolumeRatioMedio = 1.5;           // Limiar de volume medio
+input double   InpVolumeRatioAlto = 2.0;            // Limiar de volume alto
+input double   InpVolumeRatioExtremo = 3.0;         // Limiar de volume extremo
+input int      InpDiasReferenciaOrigem = 2;         // Dias para score de origem
+input double   InpPesoOrigemVolume = 0.70;          // Peso de volume no score de origem
+input double   InpPesoOrigemSombra = 0.25;          // Peso da sombra no score de origem
+input double   InpPesoOrigemCorpo = 0.05;           // Peso do corpo no score de origem
+input double   InpToleranciaDominioSombra = 0.05;   // Tolerancia para sombra dominante
+input int      InpBarrasExtrasHistorico = 10;       // Barras extras para liberar calculos
+input double   InpFatorAlturaMinBarraOrigem = 0.05; // Clamp minimo do fator de altura
+input double   InpFatorAlturaMaxBarraOrigem = 1.00; // Clamp maximo do fator de altura
+input double   InpAtrFallbackEmErro = 0.01;         // ATR fallback em erro
 
 // Buffers
 double VolumeBuffer[];
@@ -212,7 +175,7 @@ long g_chartID;
 bool g_profileDesenhado = false;
 datetime g_ultimaAtualizacao = 0;
 datetime g_ultimoDiaAnalise = 0;
-int g_numeroZonas = 7;  // Será inicializado com InpNumeroPivos validado
+int g_numeroZonas = 7;  // Sera inicializado com limite duro de organizacao
 int g_numeroZonasAlvo = 7;
 int g_numeroZonasMin = 5;
 int g_numeroZonasMax = 9;
@@ -1337,7 +1300,7 @@ int OnInit() {
    Print("════════════════════════════════════════");
    Print("  🎯 COR POR VOLUME: Paleta premium de baixa saturação");
    Print("  📊 PROGRESS BAR: Mostra volume acumulado visualmente");
-   Print("  ✅ MERGE IMEDIATO: ", InpMergeATRPercent, "% ATR");
+   Print("  ✅ MERGE IMEDIATO: ativo por regra de gap/distance");
    Print("  ✅ DISTÂNCIA MÍNIMA: ZigZag importado x ", DoubleToString(InpDistMinFatorZigZag, 2));
    Print("  ⏱️ ANTI PISCA-PISCA: ", InpTempoAssentamento, " barras");
    Print("  ✅ ALTURA MÁXIMA: ", InpMaxATRPercent, "% ATR");
