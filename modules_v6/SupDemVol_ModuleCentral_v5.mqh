@@ -19,6 +19,9 @@ void SDV4_ModuloCentralProcessar(const int rates_total,
    bool houveMudancaEstado = false;
    bool houveCriacaoNova = false;
    bool houveIncrementoVolumeToque = false;
+
+   if(SDV4_RegrasLowCostTotalAtivo() && !barraNova) return;
+
    SDV4_ExecIniciarCiclo();
    SDV4_ResetarFlagsMergeTemporarias();
 

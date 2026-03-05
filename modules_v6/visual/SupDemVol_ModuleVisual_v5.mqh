@@ -6,7 +6,9 @@ void DesenharPivos(int rates_total, const datetime &time[]) {
 
    // Verificação de segurança para o array time
    if(rates_total > ArraySize(time)) {
-      Print("⚠️ rates_total maior que array time em DesenharPivos: ", rates_total, " > ", ArraySize(time));
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
+         Print("⚠️ rates_total maior que array time em DesenharPivos: ", rates_total, " > ", ArraySize(time));
+      }
       return;
    }
 
@@ -88,18 +90,22 @@ void DesenharPivos(int rates_total, const datetime &time[]) {
       double pctSellZona = (volLados > 0.0) ? ((volSellZona / volLados) * 100.0) : 0.0;
       totalCompraCV += volBuyZona;
       totalVendaCV += volSellZona;
-      ObjectSetString(g_chartID, nomeObj, OBJPROP_TOOLTIP,
-                      StringFormat("%s | %s | VolNom: %.0f | Buy: %.0f (%.1f%%) | Sell: %.0f (%.1f%%) | PctZonas: %.1f%% | VolDist: %.0f | Origem: %s",
-                                   tipoZona,
-                                   estadoZona,
-                                   volNom,
-                                   volBuyZona,
-                                   pctBuyZona,
-                                   volSellZona,
-                                   pctSellZona,
-                                   g_pivos[i].percentualVolumeInterno,
-                                   g_pivos[i].volumeDistribuicao,
-                                   (origemVolAlto ? "VOL_ALTO" : "NORMAL")));
+      if(SDV4_RegrasLowCostTotalAtivo()) {
+         ObjectSetString(g_chartID, nomeObj, OBJPROP_TOOLTIP, "");
+      } else {
+         ObjectSetString(g_chartID, nomeObj, OBJPROP_TOOLTIP,
+                         StringFormat("%s | %s | VolNom: %.0f | Buy: %.0f (%.1f%%) | Sell: %.0f (%.1f%%) | PctZonas: %.1f%% | VolDist: %.0f | Origem: %s",
+                                      tipoZona,
+                                      estadoZona,
+                                      volNom,
+                                      volBuyZona,
+                                      pctBuyZona,
+                                      volSellZona,
+                                      pctSellZona,
+                                      g_pivos[i].percentualVolumeInterno,
+                                      g_pivos[i].volumeDistribuicao,
+                                      (origemVolAlto ? "VOL_ALTO" : "NORMAL")));
+      }
       pivosDesenhados++;
 
       // 2) Progress bar removida.
@@ -136,15 +142,22 @@ void DesenharPivos(int rates_total, const datetime &time[]) {
       }
    }
 
-   string info = StringFormat("📊 %d zonas ativas (alvo %d | faixa %d-%d) | Volume Máximo: %.0f",
-                              pivosDesenhados,
-                              g_numeroZonasAlvo,
-                              g_numeroZonasMin,
-                              g_numeroZonasMax,
-                              g_volumeMaximoGlobal);
-   if(info != g_ultimoCommentInfo) {
-      Comment(info);
-      g_ultimoCommentInfo = info;
+   if(SDV4_RegrasLowCostTotalAtivo()) {
+      if(g_ultimoCommentInfo != "") {
+         Comment("");
+         g_ultimoCommentInfo = "";
+      }
+   } else {
+      string info = StringFormat("📊 %d zonas ativas (alvo %d | faixa %d-%d) | Volume Máximo: %.0f",
+                                 pivosDesenhados,
+                                 g_numeroZonasAlvo,
+                                 g_numeroZonasMin,
+                                 g_numeroZonasMax,
+                                 g_volumeMaximoGlobal);
+      if(info != g_ultimoCommentInfo) {
+         Comment(info);
+         g_ultimoCommentInfo = info;
+      }
    }
 
    string nomePainelLog = g_prefixo + "PainelLogEnriq";

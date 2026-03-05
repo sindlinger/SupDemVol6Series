@@ -55,11 +55,17 @@ bool SDV4_RegraIndiceValido(const int idx, const bool exigirAtivo = true) {
    return true;
 }
 
+bool SDV4_RegrasLowCostTotalAtivo() {
+   return InpModoLowCostTotal;
+}
+
 bool SDV4_RegrasLogDetalhadoAtivo() {
+   if(SDV4_RegrasLowCostTotalAtivo()) return false;
    return InpLogDetalhado;
 }
 
 bool SDV4_RegrasLogBloqueiosMergeAtivo() {
+   if(SDV4_RegrasLowCostTotalAtivo()) return false;
    return InpLogBloqueiosMerge;
 }
 
@@ -84,6 +90,7 @@ bool SDV4_RegrasHabilitarTravaAncora() {
 }
 
 bool SDV4_RegrasAtualizarUIApenasBarraNova() {
+   if(SDV4_RegrasLowCostTotalAtivo()) return true;
    return InpAtualizarUIApenasBarraNova;
 }
 
@@ -277,6 +284,7 @@ double SDV4_RegrasVolumeRatioExtremo() {
 }
 
 bool SDV4_RegrasExibirValoresZona() {
+   if(SDV4_RegrasLowCostTotalAtivo()) return false;
    return InpExibirValoresZona;
 }
 

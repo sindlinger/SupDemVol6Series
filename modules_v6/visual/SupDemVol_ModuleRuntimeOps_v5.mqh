@@ -168,7 +168,9 @@ void AtualizarCoordenadasPivos(int rates_total, const datetime &time[]) {
    
    // Verificação de segurança para o array time
    if(rates_total > ArraySize(time)) {
-      Print("⚠️ rates_total maior que array time: ", rates_total, " > ", ArraySize(time));
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
+         Print("⚠️ rates_total maior que array time: ", rates_total, " > ", ArraySize(time));
+      }
       return;
    }
    
@@ -200,7 +202,9 @@ bool VerificarRompimentosEAssentamento(int rates_total, const double &close[]) {
    
    // Verificação de segurança para o array close
    if(rates_total > ArraySize(close)) {
-      Print("⚠️ rates_total maior que array close: ", rates_total, " > ", ArraySize(close));
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
+         Print("⚠️ rates_total maior que array close: ", rates_total, " > ", ArraySize(close));
+      }
       return false;
    }
    
@@ -226,7 +230,9 @@ bool VerificarRompimentosEAssentamento(int rates_total, const double &close[]) {
          // Mantém cor estável por tipo da zona (evita troca visual sem critério).
          g_pivos[i].corAtual = ObterCorZona(g_pivos[i].tipo);
          houveMudanca = true;
-         Print("🔸 Pivô ", i+1, " rompido: ", g_pivos[i].preco, " - Aguardando assentamento");
+         if(SDV4_RegrasLogDetalhadoAtivo()) {
+            Print("🔸 Pivô ", i+1, " rompido: ", g_pivos[i].preco, " - Aguardando assentamento");
+         }
       }
       
       // ANTI PISCA-PISCA: Contar barras após rompimento
@@ -252,7 +258,9 @@ bool VerificarRompimentosEAssentamento(int rates_total, const double &close[]) {
             g_pivos[i].corAtual = ObterCorZona(g_pivos[i].tipo);
             houveMudanca = true;
             
-            Print("✅ Pivô ", i+1, " confirmado após assentamento: ", g_pivos[i].preco);
+            if(SDV4_RegrasLogDetalhadoAtivo()) {
+               Print("✅ Pivô ", i+1, " confirmado após assentamento: ", g_pivos[i].preco);
+            }
          } else if(g_pivos[i].barrasAposRompimento >= SDV4_RegrasTempoAssentamento() && !precoEstabilizado) {
             // Falso rompimento, voltar ao normal
             g_pivos[i].estado = PIVO_ATIVO;
@@ -260,7 +268,9 @@ bool VerificarRompimentosEAssentamento(int rates_total, const double &close[]) {
             g_pivos[i].corAtual = ObterCorZona(g_pivos[i].tipo);
             houveMudanca = true;
             
-            Print("🔄 Pivô ", i+1, " - falso rompimento, voltando ao normal: ", g_pivos[i].preco);
+            if(SDV4_RegrasLogDetalhadoAtivo()) {
+               Print("🔄 Pivô ", i+1, " - falso rompimento, voltando ao normal: ", g_pivos[i].preco);
+            }
          }
       }
    }
@@ -276,7 +286,9 @@ double CalcularATR(int barra, const double &high[], const double &low[], const d
    
    // Verificações de segurança
    if(barra < 0 || barra >= arraySize) {
-      Print("⚠️ Índice inválido em CalcularATR: ", barra, " / ", arraySize);
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
+         Print("⚠️ Índice inválido em CalcularATR: ", barra, " / ", arraySize);
+      }
       return ObterAtrFallbackEmErro(); // Valor padrão para evitar divisão por zero
    }
    
@@ -335,7 +347,9 @@ ENUM_LINE_TYPE DeterminarTipoLinha(int barra, const double &high[], const double
    
    // Verificações de segurança
    if(barra < 0 || barra >= arraySize) {
-      Print("⚠️ Índice inválido em DeterminarTipoLinha: ", barra, " / ", arraySize);
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
+         Print("⚠️ Índice inválido em DeterminarTipoLinha: ", barra, " / ", arraySize);
+      }
       return LINE_TOP; // Default seguro
    }
    

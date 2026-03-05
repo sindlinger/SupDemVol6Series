@@ -52,6 +52,7 @@ enum ENUM_MODO_CONFLITO_SINAL_ENRIQ {
 //| Parâmetros de entrada                                           |
 //+------------------------------------------------------------------+
 input group "01. Basico"
+input bool     InpModoLowCostTotal = false;         // Modo super barato: somente faixas (sem painel/textos/logs/intrabar)
 input int      InpPeriodoMedia = 20;                // Periodo da media de volume
 input double   InpMultiplicadorDesvio = 3.5;        // Multiplicador do desvio padrao
 input bool     InpMostrarProfile = true;            // Exibe zonas no grafico
@@ -188,6 +189,7 @@ datetime g_tempoBarraCriacaoRealtime = 0;
 double g_volumeCriacaoAplicadoBarra = 0.0;
 int g_idxZonaDestinoCriacaoRealtime = -1;
 datetime g_tempoEventoVolumeConsumidoCriacao = 0;
+datetime g_tempoBarraFechadaCriacaoProcessada = 0;
 int g_zigzagHandle = INVALID_HANDLE;
 bool g_prevChartForeground = false;
 bool g_prevChartForegroundValid = false;
@@ -280,7 +282,7 @@ void SDV4_ExecSolicitarOrganizacao(const string origem) {
       }
    }
    g_execSolicitacaoOrganizacao = true;
-   if(InpLogDetalhado) {
+   if(!InpModoLowCostTotal && InpLogDetalhado) {
       Print("EXEC-GATE[REQUEST-ORG]: ", tag);
    }
 }
@@ -303,7 +305,7 @@ bool SDV4_ExecAutorizarEntrada(const int modulo,
       if(modulo == SDV4_EXEC_MOD_ORGANIZACAO) {
          SDV4_ExecSolicitarOrganizacao(origem);
       }
-      if(InpLogDetalhado) {
+      if(!InpModoLowCostTotal && InpLogDetalhado) {
          PrintFormat("EXEC-GATE[BLOCK]: modulo=%s origem=%s faseAtual=%s fasePermitida=%s ciclo=%I64u token=%I64u",
                      SDV4_ExecNomeModulo(modulo),
                      origem,
@@ -318,7 +320,7 @@ bool SDV4_ExecAutorizarEntrada(const int modulo,
    if(g_execUltimoCycleModulo[modulo] == g_execCycleId &&
       g_execUltimoTempoModulo[modulo] == tempoEvento &&
       g_execUltimaFaseModulo[modulo] == g_execFaseAtual) {
-      if(InpLogDetalhado) {
+      if(!InpModoLowCostTotal && InpLogDetalhado) {
          PrintFormat("EXEC-GATE[REPEAT]: modulo=%s fase=%s tempo=%s origem=%s",
                      SDV4_ExecNomeModulo(modulo),
                      SDV4_ExecNomeFase(g_execFaseAtual),
@@ -733,6 +735,7 @@ int ObterDiasReferenciaOrigem() {
 }
 
 int ObterLinhasLogEnriquecimentoNoGrafico() {
+   if(InpModoLowCostTotal) return 0;
    int n = InpLinhasLogEnriquecimento;
    if(n < 5) n = 5;
    if(n > 12) n = 12;
@@ -774,7 +777,13 @@ color ObterPainelLogCorTexto() {
 }
 
 bool DeveExibirPainelBalanceCVNoGrafico() {
+   if(InpModoLowCostTotal) return false;
    return InpExibirPainelBalanceCV;
+}
+
+bool DeveExibirPainelVolume() {
+   if(InpModoLowCostTotal) return false;
+   return InpExibirPainelVolume;
 }
 
 int ObterPainelBalanceOffsetX() {
@@ -799,7 +808,7 @@ int ObterPainelBalanceFonteTamanho() {
 }
 
 void RegistrarLinhaPainelLogEnriquecimentoNoGrafico(const string linha) {
-   if(!InpExibirLogEnriquecimentoNoGrafico) return;
+   if(InpModoLowCostTotal || !InpExibirLogEnriquecimentoNoGrafico) return;
    if(StringLen(linha) <= 0) return;
 
    int maxLinhas = ObterLinhasLogEnriquecimentoNoGrafico();
@@ -819,7 +828,7 @@ void RegistrarEventoEnriquecimentoNoGrafico(const string origem,
                                             const datetime tempoBarra,
                                             const int idxZona,
                                             const double volumeAplicado) {
-   if(!InpExibirLogEnriquecimentoNoGrafico) return;
+   if(InpModoLowCostTotal || !InpExibirLogEnriquecimentoNoGrafico) return;
 
    string origemTxt = origem;
    if(StringLen(origemTxt) == 0) origemTxt = "ENRIQ";
@@ -840,7 +849,7 @@ void RegistrarEventoEnriquecimentoNoGrafico(const string origem,
 }
 
 void RegistrarMensagemPainelLogEnriquecimentoNoGrafico(const string mensagem) {
-   if(!InpExibirLogEnriquecimentoNoGrafico) return;
+   if(InpModoLowCostTotal || !InpExibirLogEnriquecimentoNoGrafico) return;
    if(StringLen(mensagem) <= 0) return;
    RegistrarLinhaPainelLogEnriquecimentoNoGrafico(mensagem);
 }
@@ -853,7 +862,7 @@ void RegistrarAuditoriaEnriquecimentoBarraNoGrafico(const datetime tempoBarra,
                                                     const int zonasElegiveis,
                                                     const double volumeZonasAntes,
                                                     const double volumeZonasDepois) {
-   if(!InpExibirLogEnriquecimentoNoGrafico) return;
+   if(InpModoLowCostTotal || !InpExibirLogEnriquecimentoNoGrafico) return;
 
    string tempoTxt = "--:--";
    if(tempoBarra > 0) tempoTxt = TimeToString(tempoBarra, TIME_MINUTES);
@@ -900,7 +909,7 @@ void RegistrarDebugAlocacaoBarraNoGrafico(const string origem,
                                           const double volumeBuy,
                                           const int idxZonaSell,
                                           const double volumeSell) {
-   if(!InpExibirLogEnriquecimentoNoGrafico) return;
+   if(InpModoLowCostTotal || !InpExibirLogEnriquecimentoNoGrafico) return;
 
    string origemTxt = origem;
    if(StringLen(origemTxt) == 0) origemTxt = "DBG";
@@ -929,7 +938,7 @@ void RegistrarDebugAlocacaoBarraNoGrafico(const string origem,
 }
 
 string ObterTextoLogEnriquecimentoNoGrafico() {
-   if(!InpExibirLogEnriquecimentoNoGrafico) return "";
+   if(InpModoLowCostTotal || !InpExibirLogEnriquecimentoNoGrafico) return "";
    int maxLinhas = ObterLinhasLogEnriquecimentoNoGrafico();
    int minLinhasExibicao = 5;
    int total = g_logEnriquecimentoCount;
@@ -1195,10 +1204,11 @@ int OnInit() {
    SetIndexBuffer(2, BandaSuperiorBuffer, INDICATOR_DATA);
    SetIndexBuffer(3, ZeroBuffer, INDICATOR_DATA);
 
-   if(!InpExibirPainelVolume) {
+   if(!DeveExibirPainelVolume()) {
       PlotIndexSetInteger(0, PLOT_DRAW_TYPE, DRAW_NONE);
       PlotIndexSetInteger(1, PLOT_DRAW_TYPE, DRAW_NONE);
       PlotIndexSetInteger(2, PLOT_DRAW_TYPE, DRAW_NONE);
+      IndicatorSetInteger(INDICATOR_HEIGHT, 1);
    }
    
    ArraySetAsSeries(MediaBuffer, false);
@@ -1293,19 +1303,21 @@ int OnInit() {
       g_execUltimaFaseModulo[iExec] = SDV4_EXEC_FASE_NONE;
    }
    
-   Print("════════════════════════════════════════");
-   Print("  Organização contínua: gatilho ", ObterGatilhoOrganizacaoZonas(),
-         " | alvo ", g_numeroZonasAlvo, "/", g_numeroZonasMin,
-         " | limite duro ", g_numeroZonasMax);
-   Print("════════════════════════════════════════");
-   Print("  🎯 COR POR VOLUME: Paleta premium de baixa saturação");
-   Print("  📊 PROGRESS BAR: Mostra volume acumulado visualmente");
-   Print("  ✅ MERGE IMEDIATO: ativo por regra de gap/distance");
-   Print("  ✅ DISTÂNCIA MÍNIMA: ZigZag importado x ", DoubleToString(InpDistMinFatorZigZag, 2));
-   Print("  ⏱️ ANTI PISCA-PISCA: ", InpTempoAssentamento, " barras");
-   Print("  ✅ ALTURA MÁXIMA: ", InpMaxATRPercent, "% ATR");
-   Print("  ⚠️ FILTRO RIGOROSO: SÓ barras acima desvio padrão");
-   Print("════════════════════════════════════════");
+   if(!InpModoLowCostTotal) {
+      Print("════════════════════════════════════════");
+      Print("  Organização contínua: gatilho ", ObterGatilhoOrganizacaoZonas(),
+            " | alvo ", g_numeroZonasAlvo, "/", g_numeroZonasMin,
+            " | limite duro ", g_numeroZonasMax);
+      Print("════════════════════════════════════════");
+      Print("  🎯 COR POR VOLUME: Paleta premium de baixa saturação");
+      Print("  📊 PROGRESS BAR: Mostra volume acumulado visualmente");
+      Print("  ✅ MERGE IMEDIATO: ativo por regra de gap/distance");
+      Print("  ✅ DISTÂNCIA MÍNIMA: ZigZag importado x ", DoubleToString(InpDistMinFatorZigZag, 2));
+      Print("  ⏱️ ANTI PISCA-PISCA: ", InpTempoAssentamento, " barras");
+      Print("  ✅ ALTURA MÁXIMA: ", InpMaxATRPercent, "% ATR");
+      Print("  ⚠️ FILTRO RIGOROSO: SÓ barras acima desvio padrão");
+      Print("════════════════════════════════════════");
+   }
    
    return(INIT_SUCCEEDED);
 }
@@ -1336,6 +1348,10 @@ int OnCalculate(const int rates_total,
                 const int &spread[]) {
    
    if(rates_total < InpPeriodoMedia + ObterBarrasExtrasHistorico()) return(0);
+   bool barraNova = (prev_calculated > 0 && rates_total > prev_calculated);
+   if(InpModoLowCostTotal && prev_calculated > 0 && !barraNova) {
+      return(rates_total);
+   }
    
    // Determinar início do cálculo
    int start;
@@ -1346,6 +1362,10 @@ int OnCalculate(const int rates_total,
       start = prev_calculated - 1;
       if(rates_total > prev_calculated) {
          start = prev_calculated;
+         if(InpModoLowCostTotal) {
+            start = prev_calculated - 1;
+            if(start < 0) start = 0;
+         }
       }
    }
    

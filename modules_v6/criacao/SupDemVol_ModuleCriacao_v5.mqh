@@ -30,19 +30,21 @@ void SDV4_ModuloCriacaoProcessar(const int rates_total,
                                   close,
                                   evt)) return;
 
-   // Enriquecimento intrabar da barra criadora (se já existe destino na barra 0 atual).
-   if(SDV4_TentarEnriquecimentoRealtimeDaCriacao(evt.idx0,
-                                                 time,
-                                                 open,
-                                                 high,
-                                                 low,
-                                                 close,
-                                                 evt.tipoAtualBarra,
-                                                 evt.volumeEventoCriacao,
-                                                 evt.modoMixSombra,
-                                                 evt.fracaoCompraSombra,
-                                                 evt.fracaoVendaSombra,
-                                                 deveRecalcular)) return;
+   // Enriquecimento intrabar da barra criadora (somente no modo normal).
+   if(!SDV4_RegrasLowCostTotalAtivo()) {
+      if(SDV4_TentarEnriquecimentoRealtimeDaCriacao(evt.idx0,
+                                                    time,
+                                                    open,
+                                                    high,
+                                                    low,
+                                                    close,
+                                                    evt.tipoAtualBarra,
+                                                    evt.volumeEventoCriacao,
+                                                    evt.modoMixSombra,
+                                                    evt.fracaoCompraSombra,
+                                                    evt.fracaoVendaSombra,
+                                                    deveRecalcular)) return;
+   }
 
    if(!evt.gatilho) return;
 
