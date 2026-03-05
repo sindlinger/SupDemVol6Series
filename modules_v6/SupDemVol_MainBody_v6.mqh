@@ -163,6 +163,29 @@ input double   InpFatorAlturaMinBarraOrigem = 0.05; // Clamp minimo do fator de 
 input double   InpFatorAlturaMaxBarraOrigem = 1.00; // Clamp maximo do fator de altura
 input double   InpAtrFallbackEmErro = 0.01;         // ATR fallback em erro
 
+input group "09. Volume Real (Feed Externo)"
+input bool     InpUsarVolumeRealFeed = false;       // Lê volume real de arquivo no Common\\Files (produzido por bridge HTTP/WS)
+input string   InpArquivoVolumeRealFeed = "SupDemVol/real_volume_feed.csv"; // symbol,period_sec,bar_time_unix,volume,source_time_unix
+input bool     InpVolumeRealFeedBarraFechada = true; // Aplica no candle fechado (mais estável)
+input int      InpVolumeRealFeedRefreshMs = 1000;   // Intervalo mínimo entre leituras do arquivo
+input int      InpVolumeRealFeedMaxAtrasoSeg = 300; // Se source_time vier atrasado acima disso, ignora
+input bool     InpLogVolumeRealFeed = false;        // Log de depuração da leitura do feed externo
+
+input group "10. Book Real (DOM)"
+input bool     InpBookAtivo = false;                // Ativa leitura do DOM nativo (MarketBook)
+input bool     InpBookDesenhar = true;              // Desenha niveis do book no chart principal
+input bool     InpBookAcumularReducaoComoExecutado = true; // Quando nivel reduz/some, acumula no preco (execucao estimada)
+input int      InpBookMaxNiveisDesenho = 40;        // Maximo de niveis desenhados por refresh
+input double   InpBookVolumeMinimoExibicao = 1.0;   // Volume minimo para exibir nivel
+input int      InpBookOffsetDireitaBarras = 8;      // Distancia horizontal dos blocos DOM
+input int      InpBookLarguraBarras = 2;            // Largura horizontal dos blocos DOM
+input int      InpBookAlturaPontos = 12;            // Altura vertical dos blocos DOM (pontos)
+input int      InpBookFonte = 8;                    // Fonte do valor dos niveis DOM
+input int      InpBookPollMs = 300;                 // Polling fallback no OnCalculate
+input int      InpBookRefreshVisualMs = 250;        // Throttle da renderizacao DOM
+input int      InpBookMaxNiveisMemoria = 1200;      // Capacidade interna de niveis por preco
+input bool     InpBookLog = false;                  // Log de depuracao do modulo DOM
+
 // Buffers
 double VolumeBuffer[];
 double VolumeColorBuffer[];
@@ -207,6 +230,11 @@ double g_extremoMinDiaAnterior = 0.0;
 datetime g_referenciaDiaAtual = 0;
 datetime g_referenciaDiaAnterior = 0;
 long g_mergeCooldownTicketGlobal = 0;
+datetime g_volumeRealCacheBarTime = 0;
+double g_volumeRealCacheValor = 0.0;
+bool g_volumeRealCacheValido = false;
+ulong g_volumeRealCacheMs = 0;
+datetime g_volumeRealCacheSourceTime = 0;
 
 enum ENUM_SDV4_EXEC_MODULO {
    SDV4_EXEC_MOD_ORGANIZACAO = 0,
@@ -512,6 +540,7 @@ int g_proximoPivoID = 1;      // Contador global para IDs únicos
 
 // Regras de merge (módulo dedicado).
 #include "merge/SupDemVol_MergeRules_v5.mqh"
+#include "book/SupDemVol_ModuleBook_v1.mqh"
 
 bool SDV4_MergeCooldownPodeMesclarZona(const int idx) {
    if(idx < 0 || idx >= g_numeroZonas) return false;
@@ -732,6 +761,184 @@ int ObterDiasReferenciaOrigem() {
    if(dias < 1) dias = 1;
    if(dias > 2) dias = 2;
    return dias;
+}
+
+string SDV4_Trim(const string s) {
+   int len = StringLen(s);
+   if(len <= 0) return "";
+   int iIni = 0;
+   while(iIni < len) {
+      int ch = StringGetCharacter(s, iIni);
+      if(ch > 32) break;
+      iIni++;
+   }
+   int iFim = len - 1;
+   while(iFim >= iIni) {
+      int ch = StringGetCharacter(s, iFim);
+      if(ch > 32) break;
+      iFim--;
+   }
+   if(iFim < iIni) return "";
+   return StringSubstr(s, iIni, iFim - iIni + 1);
+}
+
+bool SDV4_LerUltimaLinhaFeedVolumeReal(string &linha) {
+   linha = "";
+   if(!InpUsarVolumeRealFeed) return false;
+   if(StringLen(InpArquivoVolumeRealFeed) <= 0) return false;
+
+   int h = FileOpen(InpArquivoVolumeRealFeed, FILE_READ | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   if(h == INVALID_HANDLE) {
+      if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+         Print("VOLUME-REAL: não abriu arquivo feed: ", InpArquivoVolumeRealFeed, " err=", GetLastError());
+      }
+      return false;
+   }
+
+   string ultima = "";
+   while(!FileIsEnding(h)) {
+      string l = SDV4_Trim(FileReadString(h));
+      if(StringLen(l) <= 0) continue;
+      if(StringGetCharacter(l, 0) == '#') continue;
+      ultima = l;
+   }
+   FileClose(h);
+
+   if(StringLen(ultima) <= 0) return false;
+   linha = ultima;
+   return true;
+}
+
+bool SDV4_ParseUltimaLinhaFeedVolumeReal(const string linha,
+                                         string &sym,
+                                         int &periodoSeg,
+                                         datetime &tempoBarra,
+                                         double &volumeReal,
+                                         datetime &sourceTime) {
+   sym = "";
+   periodoSeg = 0;
+   tempoBarra = 0;
+   volumeReal = 0.0;
+   sourceTime = 0;
+
+   string campos[];
+   int n = StringSplit(linha, ',', campos);
+   if(n < 4) return false;
+
+   sym = SDV4_Trim(campos[0]);
+   string perTxt = SDV4_Trim(campos[1]);
+   string barTxt = SDV4_Trim(campos[2]);
+   string volTxt = SDV4_Trim(campos[3]);
+   if(StringLen(sym) <= 0 || StringLen(barTxt) <= 0 || StringLen(volTxt) <= 0) return false;
+
+   // Ignora header acidental.
+   string symUpper = sym;
+   StringToUpper(symUpper);
+   if(symUpper == "SYMBOL") return false;
+
+   periodoSeg = (int)StringToInteger(perTxt);
+   tempoBarra = (datetime)StringToInteger(barTxt);
+   volumeReal = StringToDouble(volTxt);
+   if(!MathIsValidNumber(volumeReal) || volumeReal < 0.0) return false;
+   if(tempoBarra <= 0) return false;
+
+   if(n >= 5) {
+      sourceTime = (datetime)StringToInteger(SDV4_Trim(campos[4]));
+      if(sourceTime < 0) sourceTime = 0;
+   }
+   return true;
+}
+
+bool SDV4_ObterVolumeRealFeedParaBarra(const int idxBarra,
+                                       const datetime &time[],
+                                       double &volumeOut) {
+   volumeOut = 0.0;
+   if(!InpUsarVolumeRealFeed) return false;
+   if(idxBarra < 0 || idxBarra >= ArraySize(time)) return false;
+
+   datetime tempoBarraAlvo = time[idxBarra];
+   ulong agoraMs = GetTickCount();
+   int refreshMs = InpVolumeRealFeedRefreshMs;
+   if(refreshMs < 100) refreshMs = 100;
+   if(refreshMs > 60000) refreshMs = 60000;
+
+   if(g_volumeRealCacheBarTime == tempoBarraAlvo &&
+      g_volumeRealCacheMs > 0 &&
+      (agoraMs - g_volumeRealCacheMs) < (ulong)refreshMs) {
+      if(g_volumeRealCacheValido) {
+         volumeOut = g_volumeRealCacheValor;
+         return true;
+      }
+      return false;
+   }
+
+   g_volumeRealCacheBarTime = tempoBarraAlvo;
+   g_volumeRealCacheMs = agoraMs;
+   g_volumeRealCacheValido = false;
+   g_volumeRealCacheValor = 0.0;
+   g_volumeRealCacheSourceTime = 0;
+
+   string linha = "";
+   if(!SDV4_LerUltimaLinhaFeedVolumeReal(linha)) return false;
+
+   string sym = "";
+   int perSeg = 0;
+   datetime tBar = 0;
+   double vol = 0.0;
+   datetime tSrc = 0;
+   if(!SDV4_ParseUltimaLinhaFeedVolumeReal(linha, sym, perSeg, tBar, vol, tSrc)) {
+      if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+         Print("VOLUME-REAL: parse inválido: ", linha);
+      }
+      return false;
+   }
+
+   if(sym != "*" && sym != _Symbol) {
+      if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+         Print("VOLUME-REAL: símbolo diferente (feed=", sym, ", chart=", _Symbol, ")");
+      }
+      return false;
+   }
+
+   int periodoAtual = (int)PeriodSeconds();
+   if(perSeg > 0 && periodoAtual > 0 && perSeg != periodoAtual) {
+      if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+         Print("VOLUME-REAL: período diferente (feed=", perSeg, ", chart=", periodoAtual, ")");
+      }
+      return false;
+   }
+
+   if(tBar != tempoBarraAlvo) {
+      if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+         Print("VOLUME-REAL: barra diferente (feed=", TimeToString(tBar, TIME_DATE|TIME_MINUTES),
+               ", alvo=", TimeToString(tempoBarraAlvo, TIME_DATE|TIME_MINUTES), ")");
+      }
+      return false;
+   }
+
+   int maxAtraso = InpVolumeRealFeedMaxAtrasoSeg;
+   if(maxAtraso < 0) maxAtraso = 0;
+   if(maxAtraso > 86400) maxAtraso = 86400;
+   if(maxAtraso > 0 && tSrc > 0) {
+      int atraso = (int)(TimeCurrent() - tSrc);
+      if(atraso > maxAtraso) {
+         if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+            Print("VOLUME-REAL: feed atrasado (", atraso, "s > ", maxAtraso, "s)");
+         }
+         return false;
+      }
+   }
+
+   g_volumeRealCacheValido = true;
+   g_volumeRealCacheValor = vol;
+   g_volumeRealCacheSourceTime = tSrc;
+   volumeOut = vol;
+
+   if(InpLogVolumeRealFeed && !InpModoLowCostTotal) {
+      Print("VOLUME-REAL: aplicado ", DoubleToString(vol, 0),
+            " em ", TimeToString(tempoBarraAlvo, TIME_DATE|TIME_MINUTES));
+   }
+   return true;
 }
 
 int ObterLinhasLogEnriquecimentoNoGrafico() {
@@ -1291,10 +1498,16 @@ int OnInit() {
    g_extremoMinDiaAnterior = 0.0;
    g_referenciaDiaAtual = 0;
    g_referenciaDiaAnterior = 0;
+   g_volumeRealCacheBarTime = 0;
+   g_volumeRealCacheValor = 0.0;
+   g_volumeRealCacheValido = false;
+   g_volumeRealCacheMs = 0;
+   g_volumeRealCacheSourceTime = 0;
    g_execCycleId = 0;
    g_execFaseAtual = SDV4_EXEC_FASE_NONE;
    g_execSolicitacaoOrganizacao = false;
    g_execMotivoSolicitacaoOrganizacao = "";
+   SDV4_BookInit();
    for(int iExec = 0; iExec < SDV4_EXEC_MOD_COUNT; iExec++) {
       g_execTokenModulo[iExec] = 0;
       g_execFasePermitida[iExec] = SDV4_EXEC_FASE_NONE;
@@ -1324,6 +1537,7 @@ int OnInit() {
 
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason) {
+   SDV4_BookDeinit();
    if(g_zigzagHandle != INVALID_HANDLE) {
       IndicatorRelease(g_zigzagHandle);
       g_zigzagHandle = INVALID_HANDLE;
@@ -1333,6 +1547,10 @@ void OnDeinit(const int reason) {
    }
    LimparObjetos();
    Comment("");
+}
+
+void OnBookEvent(const string &symbol) {
+   SDV4_BookProcessarEvento(symbol);
 }
 
 //+------------------------------------------------------------------+
@@ -1368,6 +1586,17 @@ int OnCalculate(const int rates_total,
          }
       }
    }
+
+   // Volume real externo: aplica apenas na barra alvo (aberta ou fechada).
+   int idxBarraVolumeReal = -1;
+   bool usarVolumeRealNaBarra = false;
+   double volumeRealBarra = 0.0;
+   if(InpUsarVolumeRealFeed) {
+      idxBarraVolumeReal = InpVolumeRealFeedBarraFechada ? (rates_total - 2) : (rates_total - 1);
+      if(idxBarraVolumeReal >= 0 && idxBarraVolumeReal < rates_total) {
+         usarVolumeRealNaBarra = SDV4_ObterVolumeRealFeedParaBarra(idxBarraVolumeReal, time, volumeRealBarra);
+      }
+   }
    
    // Garantir tamanho correto do MediaBuffer
    if(ArraySize(MediaBuffer) != rates_total) {
@@ -1389,7 +1618,12 @@ int OnCalculate(const int rates_total,
    }
 
    for(int i = start; i < rates_total; i++) {
-      VolumeBuffer[i] = (double)tick_volume[i];
+      double volCalc = (double)tick_volume[i];
+      if(usarVolumeRealNaBarra && i == idxBarraVolumeReal) {
+         volCalc = volumeRealBarra;
+      }
+      if(!MathIsValidNumber(volCalc) || volCalc < 0.0) volCalc = 0.0;
+      VolumeBuffer[i] = volCalc;
       ZeroBuffer[i] = 0;
 
       datetime diaI = time[i] - (time[i] % 86400);
@@ -1429,6 +1663,7 @@ int OnCalculate(const int rates_total,
 
    AtualizarLinhaMaiorMaxima(rates_total, high);
    AtualizarLinhaMenorMinima(rates_total, low);
+   SDV4_BookOnCalculate(rates_total, time, close);
    
    return(rates_total);
 }

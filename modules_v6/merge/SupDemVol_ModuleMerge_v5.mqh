@@ -65,7 +65,7 @@ void SDV4_ModuloMergeProcessar(const int rates_total,
    }
 
    // Enriquecimento por toque/interseção: acumula volume e aumenta faixa da zona de forma proporcional.
-   double volumeEvento = (double)tick_volume[idxFechada];
+   double volumeEvento = VolumeBuffer[idxFechada];
    if(volumeEvento < 0.0) volumeEvento = 0.0;
    bool barraAcimaBanda = (BandaSuperiorBuffer[idxFechada] > 0.0 &&
                            VolumeBuffer[idxFechada] > BandaSuperiorBuffer[idxFechada]);

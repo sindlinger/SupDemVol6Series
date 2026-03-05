@@ -28,7 +28,7 @@ bool SDV4_CriacaoPrepararEvento(const int rates_total,
       if(g_tempoBarraFechadaCriacaoProcessada == time[evt.idx0]) return false;
       g_tempoBarraFechadaCriacaoProcessada = time[evt.idx0];
 
-      evt.volumeAtualBarra = (double)tick_volume[evt.idx0];
+      evt.volumeAtualBarra = VolumeBuffer[evt.idx0];
       if(!MathIsValidNumber(evt.volumeAtualBarra) || evt.volumeAtualBarra < 0.0) evt.volumeAtualBarra = 0.0;
       evt.volumeEventoCriacao = evt.volumeAtualBarra; // volume final da barra fechada
       if(evt.volumeEventoCriacao <= 1e-9) return false;
@@ -60,7 +60,7 @@ bool SDV4_CriacaoPrepararEvento(const int rates_total,
       g_idxZonaDestinoCriacaoRealtime = -1;
    }
 
-   evt.volumeAtualBarra = (double)tick_volume[evt.idx0];
+   evt.volumeAtualBarra = VolumeBuffer[evt.idx0];
    if(!MathIsValidNumber(evt.volumeAtualBarra) || evt.volumeAtualBarra < 0.0) evt.volumeAtualBarra = 0.0;
    if(evt.volumeAtualBarra + 1e-9 < g_volumeCriacaoAplicadoBarra) {
       g_volumeCriacaoAplicadoBarra = evt.volumeAtualBarra;

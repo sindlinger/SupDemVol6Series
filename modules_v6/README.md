@@ -33,6 +33,8 @@ Módulos ativos da série v6, organizados por domínio.
 - `visual/SupDemVol_ModuleRuntimeOps_v5.mqh`
 - `visual/SupDemVol_ModuleLinhasReferencia_v5.mqh`
 
+## Book (DOM)
+- `book/SupDemVol_ModuleBook_v1.mqh`
+
 ## Entrada no indicador
 `SupDemVol_-NextZero_v6.mq5` inclui `modules_v6/SupDemVol_MainBody_v6.mqh`, que encadeia os demais módulos.
-
