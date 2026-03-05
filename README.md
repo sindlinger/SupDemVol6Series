@@ -68,6 +68,9 @@ Requer:
 Exemplo:
 `python tools/ws_volume_feed_bridge.py --url "wss://SEU_WS" --symbol EURUSD --period-sec 300 --output "C:\\Users\\pichau\\AppData\\Roaming\\MetaQuotes\\Terminal\\Common\\Files\\SupDemVol\\real_volume_feed.csv" --volume-key volume --bar-time-key bar_time --source-time-key source_time --symbol-key symbol --subscribe "{\"type\":\"subscribe\",\"symbol\":\"EURUSD\"}"`
 
+Depuração para payload aninhado (muito comum):
+`python tools/ws_volume_feed_bridge.py --url "wss://SEU_WS" --symbol EURUSD --period-sec 300 --output "C:\\Users\\pichau\\AppData\\Roaming\\MetaQuotes\\Terminal\\Common\\Files\\SupDemVol\\real_volume_feed.csv" --payload-key data --volume-key tick.volume --bar-time-key tick.bar_time --source-time-key tick.source_time --symbol-key tick.symbol --subscribe-file ws_subscribe.json --debug-raw --debug-every 1 --debug-file "C:\\temp\\duk_ws_debug.log"`
+
 ## Book real no grafico (DOM)
 O indicador agora suporta DOM nativo do MT5 (`MarketBookAdd` + `OnBookEvent`):
 
