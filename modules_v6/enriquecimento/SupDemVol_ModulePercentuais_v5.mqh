@@ -1,16 +1,6 @@
 #ifndef SUPDEMVOL_MODULE_PERCENTUAIS_V5_MQH
 #define SUPDEMVOL_MODULE_PERCENTUAIS_V5_MQH
 
-double DistanciaPrecoParaFaixaZona(const double preco,
-                                   const double faixaSuperior,
-                                   const double faixaInferior) {
-   double sup = MathMax(faixaSuperior, faixaInferior);
-   double inf = MathMin(faixaSuperior, faixaInferior);
-   if(preco > sup) return (preco - sup);
-   if(preco < inf) return (inf - preco);
-   return 0.0;
-}
-
 bool DistribuirVolumeAltoJanelaEmZonas(const int rates_total,
                                        const datetime &time[],
                                        const double &high[],
@@ -132,7 +122,7 @@ void CalcularPercentuaisVolume(const int rates_total,
    double volumePonderado[20];
    for(int i = 0; i < 20; i++) volumePonderado[i] = 0.0;
 
-   if(InpPercentualNominalSimples) {
+   if(SDV4_RegrasPercentualNominalSimples()) {
       double totalVolumeAltoJanela = 0.0;
       double totalDistribuido = 0.0;
       double erroResidual = 0.0;
@@ -140,7 +130,7 @@ void CalcularPercentuaisVolume(const int rates_total,
       for(int i = 0; i < 20; i++) volumeDistribuidoPorZona[i] = 0.0;
 
       bool usouRateioEstrito = false;
-      if(InpConservacaoVolumeAltoEstrita) {
+      if(SDV4_RegrasConservacaoVolumeAltoEstrita()) {
          usouRateioEstrito = DistribuirVolumeAltoJanelaEmZonas(rates_total,
                                                                time,
                                                                high,
@@ -235,7 +225,7 @@ void CalcularPercentuaisVolume(const int rates_total,
          if(usouRateioEstrito) {
             double volRateado = volumeDistribuidoPorZona[i];
             if(volRateado < 0.0) volRateado = 0.0;
-            if(InpAplicarRateioRetroativoNasZonas) {
+            if(SDV4_RegrasAplicarRateioRetroativoNasZonas()) {
                g_pivos[i].volumeDistribuicao = volRateado;
                if(g_pivos[i].volumeTotal < volRateado) {
                   double totalLado = g_pivos[i].volumeBuy + g_pivos[i].volumeSell;
@@ -279,11 +269,11 @@ void CalcularPercentuaisVolume(const int rates_total,
          if(g_pivos[i].percentualVolume < 0.0) g_pivos[i].percentualVolume = 0.0;
       }
 
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("📊 Distribuicao nominal: baseUsada=",
                DoubleToString(g_volumeMaximoGlobal, 0),
                " | totalZonas=", DoubleToString(totalZonasNominal, 0),
-               " | retroativo=", (InpAplicarRateioRetroativoNasZonas ? "ON" : "OFF"),
+               " | retroativo=", (SDV4_RegrasAplicarRateioRetroativoNasZonas() ? "ON" : "OFF"),
                " | totalDistrib=", DoubleToString(totalDistribuido, 0),
                " | erro=", DoubleToString(erroResidual, 6));
       }
@@ -401,7 +391,7 @@ void CalcularPercentuaisVolume(const int rates_total,
       if(g_pivos[i].percentualVolume < 0.0) g_pivos[i].percentualVolume = 0.0;
    }
 
-   if(InpLogDetalhado) {
+   if(SDV4_RegrasLogDetalhadoAtivo()) {
       Print("📊 Distribuicao diária: maxAtual=", DoubleToString(maxVolDiaAtual, 0),
             " | maxAnterior=", DoubleToString(maxVolDiaAnterior, 0),
             " | baseFinal=", DoubleToString(g_volumeMaximoGlobal, 0),

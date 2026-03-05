@@ -1,10 +1,10 @@
 #ifndef SUPDEMVOL_MODULE_CENTRAL_V5_MQH
 #define SUPDEMVOL_MODULE_CENTRAL_V5_MQH
 
-#include "SupDemVol_ModuleOrganizacao_v5.mqh"
-#include "SupDemVol_ModuleEnriquecimento_v5.mqh"
-#include "SupDemVol_ModuleCriacao_v5.mqh"
-#include "SupDemVol_ModuleMerge_v5.mqh"
+#include "organizacao/SupDemVol_ModuleOrganizacao_v5.mqh"
+#include "enriquecimento/SupDemVol_ModuleEnriquecimento_v5.mqh"
+#include "criacao/SupDemVol_ModuleCriacao_v5.mqh"
+#include "merge/SupDemVol_ModuleMerge_v5.mqh"
 
 void SDV4_ModuloCentralProcessar(const int rates_total,
                                  const int prev_calculated,
@@ -19,12 +19,8 @@ void SDV4_ModuloCentralProcessar(const int rates_total,
    bool houveMudancaEstado = false;
    bool houveCriacaoNova = false;
    bool houveIncrementoVolumeToque = false;
-
-   // Reseta flags temporarias para nao travar merges em barras seguintes.
-   for(int i = 0; i < g_numeroZonas; i++) {
-      if(g_pivos[i].estado == PIVO_REMOVIDO) continue;
-      g_pivos[i].foiMergeada = false;
-   }
+   SDV4_ExecIniciarCiclo();
+   SDV4_ResetarFlagsMergeTemporarias();
 
    // Verificar se mudou o dia.
    datetime agora = time[rates_total - 1];
@@ -32,36 +28,79 @@ void SDV4_ModuloCentralProcessar(const int rates_total,
 
    if(prev_calculated == 0) {
       g_ultimoDiaAnalise = hojeMidnight;
-      if(InpLogDetalhado) Print("Primeira execucao");
+      if(SDV4_RegrasLogDetalhadoAtivo()) Print("Primeira execucao");
    } else if(g_ultimoDiaAnalise != hojeMidnight) {
       g_ultimoDiaAnalise = hojeMidnight;
-      if(InpLogDetalhado) Print("Novo dia detectado");
+      if(SDV4_RegrasLogDetalhadoAtivo()) Print("Novo dia detectado");
    }
 
    // Organização-first: tenta limpar zonas coladas/excesso antes da criação/merge.
+   SDV4_ExecDefinirFaseAtual(SDV4_EXEC_FASE_ORG_PRE);
+   SDV4_ExecConcederModulo(SDV4_EXEC_MOD_ORGANIZACAO, SDV4_EXEC_FASE_ORG_PRE);
    SDV4_ModuloOrganizacaoProcessar(rates_total, barraNova, time, close, deveRecalcular, false);
+   SDV4_ResetarFlagsMergeTemporarias();
+
+   SDV4_ExecDefinirFaseAtual(SDV4_EXEC_FASE_CRIACAO);
+   SDV4_ExecConcederModulo(SDV4_EXEC_MOD_CRIACAO, SDV4_EXEC_FASE_CRIACAO);
    SDV4_ModuloCriacaoProcessar(rates_total, barraNova, time, open, high, low, close, tick_volume, deveRecalcular, houveCriacaoNova);
+   SDV4_ResetarFlagsMergeTemporarias();
+
+   string motivoOrgDemanda = "";
+   if(SDV4_ExecConsumirSolicitacaoOrganizacao(motivoOrgDemanda)) {
+      bool forcarExecucaoOrganizacao = (!barraNova);
+      SDV4_ExecDefinirFaseAtual(SDV4_EXEC_FASE_ORG_DEMANDA);
+      SDV4_ExecConcederModulo(SDV4_EXEC_MOD_ORGANIZACAO, SDV4_EXEC_FASE_ORG_DEMANDA);
+      SDV4_ResetarFlagsMergeTemporarias();
+      SDV4_ModuloOrganizacaoProcessar(rates_total,
+                                      barraNova,
+                                      time,
+                                      close,
+                                      deveRecalcular,
+                                      true,
+                                      forcarExecucaoOrganizacao);
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
+         Print("ORGANIZACAO_DEMANDA: solicitação processada pelo módulo central (",
+               motivoOrgDemanda,
+               ") modo=",
+               (forcarExecucaoOrganizacao ? "RT" : "BARRA-FECHADA"),
+               ".");
+      }
+   }
+   SDV4_ResetarFlagsMergeTemporarias();
+
+   SDV4_ExecDefinirFaseAtual(SDV4_EXEC_FASE_MERGE);
+   SDV4_ExecConcederModulo(SDV4_EXEC_MOD_MERGE, SDV4_EXEC_FASE_MERGE);
    SDV4_ModuloMergeProcessar(rates_total, barraNova, time, open, high, low, close, tick_volume, deveRecalcular, houveIncrementoVolumeToque);
+   SDV4_ResetarFlagsMergeTemporarias();
+
    // Segunda passada: organiza novamente após novos eventos de criação/toque.
+   SDV4_ExecDefinirFaseAtual(SDV4_EXEC_FASE_ORG_POS);
+   SDV4_ExecConcederModulo(SDV4_EXEC_MOD_ORGANIZACAO, SDV4_EXEC_FASE_ORG_POS);
    SDV4_ModuloOrganizacaoProcessar(rates_total, barraNova, time, close, deveRecalcular, true);
+   SDV4_ResetarFlagsMergeTemporarias();
+   SDV4_ExecDefinirFaseAtual(SDV4_EXEC_FASE_NONE);
    // Filtro por faixa de preco desativado: nao hiberna/desativa zonas por distancia.
 
-   if(g_pivosInicializados && InpHabilitarTravaAncora) {
+   if(g_pivosInicializados && SDV4_RegrasHabilitarTravaAncora()) {
       AplicarTravaAncoraPivos();
    }
 
    // Validacao de rompimento apenas quando necessario.
-   if(g_pivosInicializados && (barraNova || !InpAtualizarUIApenasBarraNova))
+   if(g_pivosInicializados && (barraNova || !SDV4_RegrasAtualizarUIApenasBarraNova()))
       houveMudancaEstado = VerificarRompimentosEAssentamento(rates_total, close);
 
-   if(g_pivosInicializados && (deveRecalcular || houveCriacaoNova || houveIncrementoVolumeToque))
+   if(g_pivosInicializados &&
+      (deveRecalcular || houveCriacaoNova || houveIncrementoVolumeToque) &&
+      SDV4_RegrasPermitirCalculoPercentuais(rates_total, "CENTRAL-CALC-PCT"))
       CalcularPercentuaisVolume(rates_total, time, high, low);
 
    bool deveAtualizarUI = deveRecalcular || houveCriacaoNova || houveIncrementoVolumeToque ||
-                          houveMudancaEstado || barraNova || !InpAtualizarUIApenasBarraNova;
+                          houveMudancaEstado || barraNova || !SDV4_RegrasAtualizarUIApenasBarraNova();
    if(deveAtualizarUI) {
-      DesenharPivos(rates_total, time);
-      AtualizarCoordenadasPivos(rates_total, time);
+      if(SDV4_RegrasPermitirAcaoVisual(SDV4_REGRA_ACAO_DESENHAR, rates_total, "CENTRAL-DESENHAR"))
+         DesenharPivos(rates_total, time);
+      if(SDV4_RegrasPermitirAcaoVisual(SDV4_REGRA_ACAO_ATUALIZAR_COORD, rates_total, "CENTRAL-COORD"))
+         AtualizarCoordenadasPivos(rates_total, time);
    }
 }
 

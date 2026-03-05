@@ -22,7 +22,7 @@ bool SDV4_CriacaoPrepararEvento(const int rates_total,
                                 SDV4_CriacaoEventoContext &evt) {
    if(rates_total < 1) return false;
    evt.idx0 = rates_total - 1;
-   if(evt.idx0 < InpPeriodoMedia) return false;
+   if(evt.idx0 < SDV4_RegrasPeriodoMedia()) return false;
 
    if(g_tempoBarraCriacaoRealtime != time[evt.idx0]) {
       g_tempoBarraCriacaoRealtime = time[evt.idx0];
@@ -39,7 +39,7 @@ bool SDV4_CriacaoPrepararEvento(const int rates_total,
    if(evt.volumeEventoCriacao <= 1e-9) return false;
 
    evt.tipoAtualBarra = DeterminarTipoLinhaPorSombra(evt.idx0, open, high, low, close);
-   evt.modoMixSombra = (InpModoConflitoSinalEnriquecimento == CONFLITO_SINAL_MIX_SOMBRA);
+   evt.modoMixSombra = SDV4_RegrasModoConflitoMixSombra();
    evt.fracaoCompraSombra = 0.5;
    evt.fracaoVendaSombra = 0.5;
    SDV4_CalcularFracaoSombraBarra(evt.idx0,

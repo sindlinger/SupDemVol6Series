@@ -240,7 +240,7 @@ bool SDV4_TentarEnriquecimentoCriacaoProxima(const int idx0,
                                                     candInf,
                                                     true);
    if(!absorveuProxima) {
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("MERGE[proxima][SKIP]: transferencia de volume nao aplicada.");
       }
       return false;
@@ -269,7 +269,7 @@ bool SDV4_TentarEnriquecimentoCriacaoProxima(const int idx0,
                                            idxZonaPreferencial,
                                            volumeEventoCriacao);
    }
-   if(InpLogDetalhado) {
+   if(SDV4_RegrasLogDetalhadoAtivo()) {
       Print("MERGE[proxima]: zona existente recebeu volume da candidata (",
             "dist=", DoubleToString(distZonaPreferencial, _Digits),
             " limiar=", DoubleToString(limiarMergeProximo, _Digits), ").");
@@ -293,7 +293,7 @@ bool SDV4_TentarEnriquecimentoMinDistanciaCriacao(const int idx0,
    if(mergeExecutadoNestaCriacao) return false;
    if(idxZonaPreferencialEnriquecimento < 0 ||
       idxZonaPreferencialEnriquecimento >= g_numeroZonas) {
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("CRIACAO: bloqueada por distancia minima entre zonas (",
                "dist=", DoubleToString(distZonaPreferencial, _Digits),
                " limiar=", DoubleToString(limiarMinCriacao, _Digits), ").");
@@ -301,7 +301,7 @@ bool SDV4_TentarEnriquecimentoMinDistanciaCriacao(const int idx0,
       return false;
    }
    if(g_pivos[idxZonaPreferencialEnriquecimento].foiMergeada) {
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("CRIACAO: bloqueada por distancia minima entre zonas (",
                "dist=", DoubleToString(distZonaPreferencial, _Digits),
                " limiar=", DoubleToString(limiarMinCriacao, _Digits), ").");
@@ -317,7 +317,7 @@ bool SDV4_TentarEnriquecimentoMinDistanciaCriacao(const int idx0,
                                                           candInf,
                                                           true);
    if(!enriqueceuPorBloqueio) {
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("CRIACAO: bloqueada por distancia minima entre zonas (",
                "dist=", DoubleToString(distZonaPreferencial, _Digits),
                " limiar=", DoubleToString(limiarMinCriacao, _Digits), ").");
@@ -349,7 +349,7 @@ bool SDV4_TentarEnriquecimentoMinDistanciaCriacao(const int idx0,
                                            idxZonaPreferencialEnriquecimento,
                                            volumeEventoCriacao);
    }
-   if(InpLogDetalhado) {
+   if(SDV4_RegrasLogDetalhadoAtivo()) {
       Print("CRIACAO->ENRIQUECIMENTO[min-dist]: candidata absorvida pela zona local (",
             "dist=", DoubleToString(distZonaPreferencial, _Digits),
             " limiar=", DoubleToString(limiarMinCriacao, _Digits), ").");
@@ -522,7 +522,7 @@ void SDV4_TentarEnriquecimentoLocalCriacaoBloqueada(const int idx0,
    }
 
    if(!absorveu || volumeAplicado <= 1e-9) {
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("MERGE[bloqueio][SKIP]: volume da candidata nao aplicado na zona bloqueadora.");
       }
       return;
@@ -543,7 +543,7 @@ void SDV4_TentarEnriquecimentoLocalCriacaoBloqueada(const int idx0,
                                         idxZonaBloqueadora,
                                         volAplicadoSell);
 
-   if(InpLogDetalhado) {
+   if(SDV4_RegrasLogDetalhadoAtivo()) {
       double volDepois = g_pivos[idxZonaBloqueadora].volumeTotal;
       PrintFormat("MERGE[bloqueio]: Z%d recebeu %.0f (buy %.0f / sell %.0f) | %.0f -> %.0f",
                   idxZonaBloqueadora + 1,

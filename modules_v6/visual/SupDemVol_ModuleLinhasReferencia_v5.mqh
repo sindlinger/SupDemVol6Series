@@ -2,14 +2,14 @@
 #define SUPDEMVOL_MODULE_LINHAS_REFERENCIA_V5_MQH
 
 int ObterPeriodoLinhaMaiorMaxima() {
-   int p = InpPeriodoLinhaMaiorMaxima;
+   int p = SDV4_RegrasPeriodoLinhaMaiorMaxima();
    if(p < 1) p = 1;
    if(p > 5000) p = 5000;
    return p;
 }
 
 int ObterLarguraLinhaMaiorMaxima() {
-   int largura = InpLarguraLinhaMaiorMaxima;
+   int largura = SDV4_RegrasLarguraLinhaMaiorMaxima();
    if(largura < 1) largura = 1;
    if(largura > 5) largura = 5;
    return largura;
@@ -30,7 +30,7 @@ double ObterMaiorMaximaUltimosPeriodos(const int rates_total, const double &high
 
 void AtualizarLinhaMaiorMaxima(const int rates_total, const double &high[]) {
    string nomeLinha = g_prefixo + "LinhaMaiorMaxima";
-   if(!InpMostrarLinhaMaiorMaxima || rates_total <= 0) {
+   if(!SDV4_RegrasMostrarLinhaMaiorMaxima() || rates_total <= 0) {
       if(ObjectFind(g_chartID, nomeLinha) >= 0) ObjectDelete(g_chartID, nomeLinha);
       return;
    }
@@ -41,7 +41,7 @@ void AtualizarLinhaMaiorMaxima(const int rates_total, const double &high[]) {
 
    double precoLinha = maiorMaxima;
    double tolerancia = _Point * 0.5;
-   if(InpMaximaReal) {
+   if(SDV4_RegrasMaximaReal()) {
       if(!g_maximaRealInicializada) {
          g_precoMaximaReal = maiorMaxima;
          g_maximaRealInicializada = true;
@@ -61,8 +61,8 @@ void AtualizarLinhaMaiorMaxima(const int rates_total, const double &high[]) {
       ObjectCreate(g_chartID, nomeLinha, OBJ_HLINE, 0, 0, precoLinha);
    }
    ObjectSetDouble(g_chartID, nomeLinha, OBJPROP_PRICE, precoLinha);
-   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_COLOR, InpCorLinhaMaiorMaxima);
-   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_STYLE, InpEstiloLinhaMaiorMaxima);
+   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_COLOR, SDV4_RegrasCorLinhaMaiorMaxima());
+   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_STYLE, SDV4_RegrasEstiloLinhaMaiorMaxima());
    ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_WIDTH, ObterLarguraLinhaMaiorMaxima());
    ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_BACK, false);
    ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_SELECTABLE, false);
@@ -71,18 +71,18 @@ void AtualizarLinhaMaiorMaxima(const int rates_total, const double &high[]) {
                    StringFormat("Maior máxima (%d): %.5f | Máxima real: %s",
                                 ObterPeriodoLinhaMaiorMaxima(),
                                 precoLinha,
-                                InpMaximaReal ? "SIM" : "NAO"));
+                                SDV4_RegrasMaximaReal() ? "SIM" : "NAO"));
 }
 
 int ObterPeriodoLinhaMenorMinima() {
-   int p = InpPeriodoLinhaMenorMinima;
+   int p = SDV4_RegrasPeriodoLinhaMenorMinima();
    if(p < 1) p = 1;
    if(p > 5000) p = 5000;
    return p;
 }
 
 int ObterLarguraLinhaMenorMinima() {
-   int largura = InpLarguraLinhaMenorMinima;
+   int largura = SDV4_RegrasLarguraLinhaMenorMinima();
    if(largura < 1) largura = 1;
    if(largura > 5) largura = 5;
    return largura;
@@ -103,7 +103,7 @@ double ObterMenorMinimaUltimosPeriodos(const int rates_total, const double &low[
 
 void AtualizarLinhaMenorMinima(const int rates_total, const double &low[]) {
    string nomeLinha = g_prefixo + "LinhaMenorMinima";
-   if(!InpMostrarLinhaMenorMinima || rates_total <= 0) {
+   if(!SDV4_RegrasMostrarLinhaMenorMinima() || rates_total <= 0) {
       if(ObjectFind(g_chartID, nomeLinha) >= 0) ObjectDelete(g_chartID, nomeLinha);
       return;
    }
@@ -114,7 +114,7 @@ void AtualizarLinhaMenorMinima(const int rates_total, const double &low[]) {
 
    double precoLinha = menorMinima;
    double tolerancia = _Point * 0.5;
-   if(InpMaximaReal) {
+   if(SDV4_RegrasMaximaReal()) {
       if(!g_minimaRealInicializada) {
          g_precoMinimaReal = menorMinima;
          g_minimaRealInicializada = true;
@@ -134,8 +134,8 @@ void AtualizarLinhaMenorMinima(const int rates_total, const double &low[]) {
       ObjectCreate(g_chartID, nomeLinha, OBJ_HLINE, 0, 0, precoLinha);
    }
    ObjectSetDouble(g_chartID, nomeLinha, OBJPROP_PRICE, precoLinha);
-   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_COLOR, InpCorLinhaMenorMinima);
-   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_STYLE, InpEstiloLinhaMenorMinima);
+   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_COLOR, SDV4_RegrasCorLinhaMenorMinima());
+   ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_STYLE, SDV4_RegrasEstiloLinhaMenorMinima());
    ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_WIDTH, ObterLarguraLinhaMenorMinima());
    ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_BACK, false);
    ObjectSetInteger(g_chartID, nomeLinha, OBJPROP_SELECTABLE, false);
@@ -144,7 +144,7 @@ void AtualizarLinhaMenorMinima(const int rates_total, const double &low[]) {
                    StringFormat("Menor mínima (%d): %.5f | Máxima real: %s",
                                 ObterPeriodoLinhaMenorMinima(),
                                 precoLinha,
-                                InpMaximaReal ? "SIM" : "NAO"));
+                                SDV4_RegrasMaximaReal() ? "SIM" : "NAO"));
 }
 
 #endif

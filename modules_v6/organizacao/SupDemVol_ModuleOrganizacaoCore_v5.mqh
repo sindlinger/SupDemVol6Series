@@ -4,21 +4,21 @@
 #include "SupDemVol_ModuleShvedFractal_v1.mqh"
 
 int ObterGatilhoOrganizacaoZonas() {
-   int v = InpOrganizacaoGatilhoZonas;
+   int v = SDV4_RegrasOrganizacaoGatilhoZonas();
    if(v < 2) v = 2;
    if(v > 20) v = 20;
    return v;
 }
 
 int ObterLimiteDuroOrganizacaoZonas() {
-   int v = InpOrganizacaoLimiteDuroZonas;
+   int v = SDV4_RegrasOrganizacaoLimiteDuroZonas();
    if(v < 2) v = 2;
    if(v > 20) v = 20;
    return v;
 }
 
 int ObterAlvoNormalOrganizacaoZonas() {
-   int alvo = InpOrganizacaoAlvoNormal;
+   int alvo = SDV4_RegrasOrganizacaoAlvoNormal();
    if(alvo < 1) alvo = 1;
    int limite = ObterLimiteDuroOrganizacaoZonas();
    if(alvo > limite) alvo = limite;
@@ -26,7 +26,7 @@ int ObterAlvoNormalOrganizacaoZonas() {
 }
 
 int ObterAlvoSemGapOrganizacaoZonas() {
-   int alvo = InpOrganizacaoAlvoSemGap;
+   int alvo = SDV4_RegrasOrganizacaoAlvoSemGap();
    int alvoNormal = ObterAlvoNormalOrganizacaoZonas();
    if(alvo < 1) alvo = 1;
    if(alvo > alvoNormal) alvo = alvoNormal;
@@ -34,14 +34,14 @@ int ObterAlvoSemGapOrganizacaoZonas() {
 }
 
 int ObterMaxAcoesOrganizacaoPorBarra() {
-   int n = InpOrganizacaoMaxAcoesPorBarra;
+   int n = SDV4_RegrasOrganizacaoMaxAcoesPorBarra();
    if(n < 1) n = 1;
    if(n > 100) n = 100;
    return n;
 }
 
 double ObterFatorGapMaiorZonaOrganizacao() {
-   double f = InpOrganizacaoFatorGapMaiorZona;
+   double f = SDV4_RegrasOrganizacaoFatorGapMaiorZona();
    if(!MathIsValidNumber(f)) f = 2.0;
    if(f < 0.10) f = 0.10;
    if(f > 10.0) f = 10.0;
@@ -166,11 +166,15 @@ bool SDV4_AjustarParaPosicaoLivre(const double supBase,
                                   const double infBase,
                                   const int idxIgnorarA,
                                   const int idxIgnorarB,
+                                  const double distMinimaEntrada,
                                   double &supOut,
                                   double &infOut) {
    double hMin = ObterAlturaMinimaZonaPreco();
-   double distMinima = MathMax(hMin * 0.50, _Point * 2.0);
-   double passo = MathMax(hMin * 0.50, _Point * 2.0);
+   double distMinima = distMinimaEntrada;
+   if(!MathIsValidNumber(distMinima) || distMinima <= 0.0) {
+      distMinima = MathMax(hMin * 0.50, _Point * 2.0);
+   }
+   double passo = MathMax(MathMax(hMin * 0.50, _Point * 2.0), distMinima * 0.50);
 
    if(SDV4_PosicaoLivreFaixa(supBase, infBase, idxIgnorarA, idxIgnorarB, distMinima)) {
       supOut = supBase;
@@ -202,6 +206,23 @@ bool SDV4_AjustarParaPosicaoLivre(const double supBase,
    return false;
 }
 
+bool SDV4_AjustarParaPosicaoLivre(const double supBase,
+                                  const double infBase,
+                                  const int idxIgnorarA,
+                                  const int idxIgnorarB,
+                                  double &supOut,
+                                  double &infOut) {
+   double hMin = ObterAlturaMinimaZonaPreco();
+   double distMinimaPadrao = MathMax(hMin * 0.50, _Point * 2.0);
+   return SDV4_AjustarParaPosicaoLivre(supBase,
+                                       infBase,
+                                       idxIgnorarA,
+                                       idxIgnorarB,
+                                       distMinimaPadrao,
+                                       supOut,
+                                       infOut);
+}
+
 bool SDV4_SelecionarParParaMerge(const double precoReferencia,
                                  const datetime tempoEvento,
                                  const int idxZonaDistante,
@@ -214,11 +235,21 @@ bool SDV4_SelecionarParParaMerge(const double precoReferencia,
    gapEscolhido = DBL_MAX;
 
    double melhorScore = DBL_MAX;
+   int bloqueiosCooldownZona = 0;
+   int bloqueiosCooldownPar = 0;
 
    for(int i = 0; i < g_numeroZonas; i++) {
       if(g_pivos[i].estado == PIVO_REMOVIDO) continue;
+      if(!SDV4_MergeCooldownPodeMesclarZona(i)) {
+         bloqueiosCooldownZona++;
+         continue;
+      }
       for(int j = i + 1; j < g_numeroZonas; j++) {
          if(g_pivos[j].estado == PIVO_REMOVIDO) continue;
+         if(!SDV4_MergeCooldownPodeMesclarZona(j)) {
+            bloqueiosCooldownPar++;
+            continue;
+         }
 
          if(priorizarDistante && idxZonaDistante >= 0 && i != idxZonaDistante && j != idxZonaDistante) continue;
 
@@ -269,6 +300,14 @@ bool SDV4_SelecionarParParaMerge(const double precoReferencia,
       }
    }
 
+   if(idxKeep < 0 && (bloqueiosCooldownZona > 0 || bloqueiosCooldownPar > 0)) {
+      SDV4_RegrasLogBloqueioMerge("COOLDOWN-SELECAO",
+                                  -1,
+                                  -1,
+                                  StringFormat("bloqZona=%d bloqPar=%d",
+                                               bloqueiosCooldownZona,
+                                               bloqueiosCooldownPar));
+   }
    return (idxKeep >= 0 && idxDrop >= 0 && idxKeep != idxDrop);
 }
 
@@ -278,6 +317,24 @@ bool AbsorverZonaSemMoverAncora(const int idxKeep, const int idxDrop, const date
    if(idxKeep == idxDrop) return false;
    if(g_pivos[idxKeep].estado == PIVO_REMOVIDO) return false;
    if(g_pivos[idxDrop].estado == PIVO_REMOVIDO) return false;
+   if(!SDV4_MergeCooldownPodeMesclarZona(idxKeep)) {
+      SDV4_RegrasLogBloqueioMerge("COOLDOWN-KEEP",
+                                  idxKeep,
+                                  idxDrop,
+                                  StringFormat("ticket=%I64d global=%I64d",
+                                               g_pivos[idxKeep].cooldownMergeTicket,
+                                               g_mergeCooldownTicketGlobal));
+      return false;
+   }
+   if(!SDV4_MergeCooldownPodeMesclarZona(idxDrop)) {
+      SDV4_RegrasLogBloqueioMerge("COOLDOWN-DROP",
+                                  idxKeep,
+                                  idxDrop,
+                                  StringFormat("ticket=%I64d global=%I64d",
+                                               g_pivos[idxDrop].cooldownMergeTicket,
+                                               g_mergeCooldownTicketGlobal));
+      return false;
+   }
 
    PivoAtivo keep = g_pivos[idxKeep];
    PivoAtivo drop = g_pivos[idxDrop];
@@ -289,6 +346,31 @@ bool AbsorverZonaSemMoverAncora(const int idxKeep, const int idxDrop, const date
    double altura = supEnvelope - infEnvelope;
    double alturaMin = ObterAlturaMinimaZonaPreco();
    if(altura < alturaMin) altura = alturaMin;
+   double atrRefMerge = 0.0;
+   if(keep.atr > 0.0 && drop.atr > 0.0) atrRefMerge = (keep.atr + drop.atr) * 0.5;
+   else atrRefMerge = MathMax(keep.atr, drop.atr);
+   if(atrRefMerge <= 0.0) atrRefMerge = MathAbs(keep.preco - drop.preco);
+   if(atrRefMerge <= 0.0) atrRefMerge = MathAbs(supEnvelope - infEnvelope);
+   double alturaMaxPermitida = ObterAlturaMaximaPermitidaMerge(atrRefMerge);
+   if(MathIsValidNumber(alturaMaxPermitida) && alturaMaxPermitida > 0.0 && alturaMaxPermitida + 1e-9 < alturaMin) {
+      SDV4_RegrasLogBloqueioMerge("ALTURA-MAX<MIN",
+                                  idxKeep,
+                                  idxDrop,
+                                  StringFormat("hMin=%.5f hMax=%.5f atrRef=%.5f",
+                                               alturaMin,
+                                               alturaMaxPermitida,
+                                               atrRefMerge));
+      return false;
+   }
+   if(MathIsValidNumber(alturaMaxPermitida) && alturaMaxPermitida > 0.0) {
+      if(altura > alturaMaxPermitida) altura = alturaMaxPermitida;
+      if(altura < alturaMin) altura = MathMin(alturaMin, alturaMaxPermitida);
+   }
+   if(altura < alturaMin) altura = alturaMin;
+   double distMinPosMerge = MathMax(alturaMin,
+                                    ObterLimiarDistanciaATR(atrRefMerge, SDV4_RegrasDistanciaMinATR()) * 0.35);
+   if(!MathIsValidNumber(distMinPosMerge) || distMinPosMerge <= 0.0)
+      distMinPosMerge = MathMax(alturaMin, _Point * 2.0);
 
    double wk = MathMax(1.0, keep.volumeDistribuicao);
    double wd = MathMax(1.0, drop.volumeDistribuicao);
@@ -316,13 +398,36 @@ bool AbsorverZonaSemMoverAncora(const int idxKeep, const int idxDrop, const date
 
       double supLivre = novoSup;
       double infLivre = novoInf;
-      if(SDV4_AjustarParaPosicaoLivre(novoSup, novoInf, idxKeep, idxDrop, supLivre, infLivre)) {
+      if(SDV4_AjustarParaPosicaoLivre(novoSup, novoInf, idxKeep, idxDrop, distMinPosMerge, supLivre, infLivre)) {
          novoSup = supLivre;
          novoInf = infLivre;
       } else {
-         novoSup = supEnvelope;
-         novoInf = infEnvelope;
+         SDV4_RegrasLogBloqueioMerge("DIST-SHVED-SEM-ESPACO",
+                                     idxKeep,
+                                     idxDrop,
+                                     StringFormat("distMin=%.5f sup=%.5f inf=%.5f",
+                                                  distMinPosMerge,
+                                                  novoSup,
+                                                  novoInf));
+         return false;
       }
+   }
+
+   if(!SDV4_PosicaoLivreFaixa(novoSup, novoInf, idxKeep, idxDrop, distMinPosMerge)) {
+      double supLivre = novoSup;
+      double infLivre = novoInf;
+      if(!SDV4_AjustarParaPosicaoLivre(novoSup, novoInf, idxKeep, idxDrop, distMinPosMerge, supLivre, infLivre)) {
+         SDV4_RegrasLogBloqueioMerge("DIST-FINAL-SEM-ESPACO",
+                                     idxKeep,
+                                     idxDrop,
+                                     StringFormat("distMin=%.5f sup=%.5f inf=%.5f",
+                                                  distMinPosMerge,
+                                                  novoSup,
+                                                  novoInf));
+         return false;
+      }
+      novoSup = supLivre;
+      novoInf = infLivre;
    }
 
    double precoRef = 0.0;
@@ -374,6 +479,7 @@ bool AbsorverZonaSemMoverAncora(const int idxKeep, const int idxDrop, const date
    g_pivos[idxKeep].ancoraPreco = g_pivos[idxKeep].preco;
    g_pivos[idxKeep].ancoraTempoInicio = g_pivos[idxKeep].tempoInicio;
    g_pivos[idxKeep].ancoraInicializada = true;
+   g_pivos[idxKeep].cooldownMergeTicket = 0;
 
    string idIncorp = (drop.pivoID > 0) ? IntegerToString(drop.pivoID) : "";
    if(StringLen(idIncorp) > 0) {
@@ -383,6 +489,7 @@ bool AbsorverZonaSemMoverAncora(const int idxKeep, const int idxDrop, const date
          g_pivos[idxKeep].pivosIncorporados = idIncorp;
    }
 
+   SDV4_MergeCooldownMarcarZona(idxKeep);
    LimparSlotPivo(idxDrop);
    return true;
 }
@@ -438,7 +545,7 @@ bool OrganizarZonasNoInicioDoDia(const double precoReferencia, const datetime te
                                         idxDrop,
                                         gapEscolhido)) {
             mergeExecutado = AbsorverZonaSemMoverAncora(idxKeep, idxDrop, tempoEvento);
-            if(mergeExecutado && InpLogDetalhado) {
+            if(mergeExecutado && SDV4_RegrasLogDetalhadoAtivo()) {
                Print("ORGANIZACAO: MERGE idxKeep=", idxKeep,
                      " idxDrop=", idxDrop,
                      " gap=", DoubleToString(gapEscolhido, _Digits));
@@ -461,7 +568,7 @@ bool OrganizarZonasNoInicioDoDia(const double precoReferencia, const datetime te
          if(SDV4_EliminarZonaMaisDistante(precoReferencia, tempoEvento)) {
             houveMudanca = true;
             alternarModo = !alternarModo;
-            if(InpLogDetalhado) {
+            if(SDV4_RegrasLogDetalhadoAtivo()) {
                Print("ORGANIZACAO: DROP zona mais distante | ativos=", ativos,
                      " alvo=", alvoReducao);
             }

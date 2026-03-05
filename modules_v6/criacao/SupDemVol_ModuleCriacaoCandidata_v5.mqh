@@ -56,7 +56,7 @@ void SDV4_CriacaoMontarCandidata(const SDV4_CriacaoEventoContext &evt,
    }
    if(cand.espessuraOrigem > 10) cand.espessuraOrigem = 10;
 
-   double fatorAlturaBase = InpFatorAlturaBarraOrigem;
+   double fatorAlturaBase = SDV4_RegrasFatorAlturaBarraOrigem();
    double fatorAlturaMin = 0.0;
    double fatorAlturaMax = 0.0;
    ObterLimitesFatorAlturaBarraOrigem(fatorAlturaMin, fatorAlturaMax);
@@ -83,9 +83,9 @@ void SDV4_CriacaoMontarCandidata(const SDV4_CriacaoEventoContext &evt,
    if(cand.barraPicoVolumeDia) alturaMinPorRelevancia *= 1.35;
    if(cand.alturaZonaCand < alturaMinPorRelevancia) cand.alturaZonaCand = alturaMinPorRelevancia;
 
-   cand.alturaMaximaZona = ObterLimiarDistanciaATR(cand.atrAtual, InpMaxATRPercent);
+   cand.alturaMaximaZona = ObterLimiarDistanciaATR(cand.atrAtual, SDV4_RegrasMaxATRPercent());
    if(cand.barraPicoVolumeDia) {
-      double alturaMaxPico = ObterLimiarDistanciaATR(cand.atrAtual, InpMaxATRPercent * 2.0);
+      double alturaMaxPico = ObterLimiarDistanciaATR(cand.atrAtual, SDV4_RegrasMaxATRPercent() * 2.0);
       if(alturaMaxPico > cand.alturaMaximaZona) cand.alturaMaximaZona = alturaMaxPico;
    }
    if(cand.alturaZonaCand > cand.alturaMaximaZona) cand.alturaZonaCand = cand.alturaMaximaZona;
@@ -96,7 +96,7 @@ void SDV4_CriacaoMontarCandidata(const SDV4_CriacaoEventoContext &evt,
    cand.candSup = (cand.tipo == LINE_TOP) ? high[evt.idx0] : (low[evt.idx0] + cand.alturaZonaCand);
    cand.candInf = (cand.tipo == LINE_TOP) ? (high[evt.idx0] - cand.alturaZonaCand) : low[evt.idx0];
 
-   cand.limiarMinCriacao = ObterLimiarDistanciaATR(cand.atrAtual, InpDistanciaMinATR) *
+   cand.limiarMinCriacao = ObterLimiarDistanciaATR(cand.atrAtual, SDV4_RegrasDistanciaMinATR()) *
                            ObterFatorDistanciaMinCriacao();
    double distMinPorTamanhoMin = MathMax(cand.alturaMinimaZona, cand.alturaMinimaZona * 0.80);
    double distMinPorTamanhoMax = MathMax(distMinPorTamanhoMin, cand.alturaMaximaZona * 0.80);

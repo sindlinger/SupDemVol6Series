@@ -64,7 +64,7 @@ void DesenharPivos(int rates_total, const datetime &time[]) {
       ObjectSetInteger(g_chartID, nomeObj, OBJPROP_SELECTABLE, false);
 
       if(preencherZona) {
-         uint alpha = (uint)InpTransparenciaZonas;
+         uint alpha = SDV4_RegrasTransparenciaZonas();
          if(alpha > 255) alpha = 255;
          color corComTransparencia = (color)((g_pivos[i].corAtual & 0x00FFFFFF) | (alpha << 24));
          ObjectSetInteger(g_chartID, nomeObj, OBJPROP_BGCOLOR, corComTransparencia);

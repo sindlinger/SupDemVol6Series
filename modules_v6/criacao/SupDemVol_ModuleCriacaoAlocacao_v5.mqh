@@ -6,7 +6,6 @@
 void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
                                            const SDV4_CriacaoCandidataContext &cand,
                                            const datetime &time[],
-                                           const double &close[],
                                            bool &deveRecalcular,
                                            bool &houveCriacaoNova,
                                            bool &mergeExecutadoNestaCriacao,
@@ -15,9 +14,7 @@ void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
    if(!mergeExecutadoNestaCriacao) {
       int ativosAntes = ContarZonasAtivas();
       if(ativosAntes > ObterGatilhoOrganizacaoZonas() || ativosAntes >= ObterLimiteDuroOrganizacaoZonas()) {
-         if(OrganizarZonasNoInicioDoDia(close[evt.idx0], time[evt.idx0])) {
-            deveRecalcular = true;
-         }
+         SDV4_ExecSolicitarOrganizacao("CRIACAO-PRECHECK-ATIVOS");
       }
 
       int idxLivre = -1;
@@ -27,6 +24,14 @@ void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
 
       if(idxLivre >= 0) {
          if(cand.menorDistFaixa > cand.limiarMinCriacao) {
+            if(!SDV4_RegrasPermitirCriacaoZona(idxLivre,
+                                               time[evt.idx0],
+                                               evt.volumeEventoCriacao,
+                                               "CRIACAO-SLOT-PRINCIPAL")) {
+               SDV4_ExecSolicitarOrganizacao("CRIACAO-REGRAS-SLOT-PRINCIPAL");
+               g_tempoUltimaCriacaoBarra = time[evt.idx0];
+               return;
+            }
             ENUM_VOLUME_INTENSIDADE intensidade = DeterminarIntensidadeVolume(evt.volumeAtualBarra, MathMax(MediaBuffer[evt.idx0], 1.0));
             if(cand.barraPicoVolumeDia) intensidade = VOLUME_EXTREMO;
             g_pivos[idxLivre].preco = cand.precoZona;
@@ -63,6 +68,7 @@ void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
             g_pivos[idxLivre].pivosIncorporados = "";
             g_pivos[idxLivre].intensidadeVolume = intensidade;
             g_pivos[idxLivre].ultimoTempoToqueContabilizado = time[evt.idx0];
+            g_pivos[idxLivre].cooldownMergeTicket = 0;
             DefinirAncoraPivo(idxLivre);
 
             idxZonaDestinoEvento = idxLivre;
@@ -88,18 +94,23 @@ void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
          }
          g_tempoUltimaCriacaoBarra = time[evt.idx0];
       } else {
-         bool organizouSemSlot = OrganizarZonasNoInicioDoDia(close[evt.idx0], time[evt.idx0]);
-         if(organizouSemSlot) {
-            deveRecalcular = true;
-         }
+         SDV4_ExecSolicitarOrganizacao("CRIACAO-SEM-SLOT");
 
-         // Tenta novamente após organização.
+         // Tenta novamente caso um slot já tenha sido liberado no ciclo atual.
          idxLivre = -1;
          for(int i = 0; i < g_numeroZonas; i++) {
             if(g_pivos[i].estado == PIVO_REMOVIDO) { idxLivre = i; break; }
          }
 
          if(idxLivre >= 0 && cand.menorDistFaixa > cand.limiarMinCriacao) {
+            if(!SDV4_RegrasPermitirCriacaoZona(idxLivre,
+                                               time[evt.idx0],
+                                               evt.volumeEventoCriacao,
+                                               "CRIACAO-SLOT-RETRY")) {
+               SDV4_ExecSolicitarOrganizacao("CRIACAO-REGRAS-SLOT-RETRY");
+               g_tempoUltimaCriacaoBarra = time[evt.idx0];
+               return;
+            }
             ENUM_VOLUME_INTENSIDADE intensidade = DeterminarIntensidadeVolume(evt.volumeAtualBarra, MathMax(MediaBuffer[evt.idx0], 1.0));
             if(cand.barraPicoVolumeDia) intensidade = VOLUME_EXTREMO;
             g_pivos[idxLivre].preco = cand.precoZona;
@@ -136,6 +147,7 @@ void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
             g_pivos[idxLivre].pivosIncorporados = "";
             g_pivos[idxLivre].intensidadeVolume = intensidade;
             g_pivos[idxLivre].ultimoTempoToqueContabilizado = time[evt.idx0];
+            g_pivos[idxLivre].cooldownMergeTicket = 0;
             DefinirAncoraPivo(idxLivre);
 
             idxZonaDestinoEvento = idxLivre;
@@ -146,11 +158,11 @@ void SDV4_CriacaoExecutarAlocacaoPrincipal(const SDV4_CriacaoEventoContext &evt,
             deveRecalcular = true;
          }
 
-         if(InpLogDetalhado) {
+         if(SDV4_RegrasLogDetalhadoAtivo()) {
             if(idxLivre >= 0) {
-               Print("ORGANIZACAO[sem-slot]: liberou capacidade para nova zona.");
+               Print("CRIACAO[sem-slot]: slot disponível após organização prévia no ciclo.");
             } else {
-               Print("ORGANIZACAO[sem-slot][SKIP]: sem capacidade após organização.");
+               Print("CRIACAO[sem-slot]: solicitada organização ao módulo central.");
             }
          }
          g_tempoUltimaCriacaoBarra = time[evt.idx0];

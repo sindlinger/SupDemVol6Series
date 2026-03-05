@@ -15,6 +15,10 @@ void SDV4_ModuloCriacaoProcessar(const int rates_total,
                                  const long &tick_volume[],
                                  bool &deveRecalcular,
                                  bool &houveCriacaoNova) {
+   if(rates_total < 1) return;
+   datetime tempoEvento = time[rates_total - 1];
+   if(!SDV4_RegrasPermitirEntradaModulo(SDV4_EXEC_MOD_CRIACAO, tempoEvento, "MOD-CRIACAO")) return;
+
    // Criacao: barra 0 (aberta), com enriquecimento incremental em tempo real ate o fechamento.
    SDV4_CriacaoEventoContext evt;
    if(!SDV4_CriacaoPrepararEvento(rates_total,
@@ -90,7 +94,6 @@ void SDV4_ModuloCriacaoProcessar(const int rates_total,
    SDV4_CriacaoExecutarAlocacaoPrincipal(evt,
                                          cand,
                                          time,
-                                         close,
                                          deveRecalcular,
                                          houveCriacaoNova,
                                          mergeExecutadoNestaCriacao,

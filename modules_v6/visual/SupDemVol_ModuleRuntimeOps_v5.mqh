@@ -4,9 +4,9 @@
 void ObterLimiaresIntensidadeVolume(double &limiarMedio,
                                     double &limiarAlto,
                                     double &limiarExtremo) {
-   limiarMedio = InpVolumeRatioMedio;
-   limiarAlto = InpVolumeRatioAlto;
-   limiarExtremo = InpVolumeRatioExtremo;
+   limiarMedio = SDV4_RegrasVolumeRatioMedio();
+   limiarAlto = SDV4_RegrasVolumeRatioAlto();
+   limiarExtremo = SDV4_RegrasVolumeRatioExtremo();
 
    if(!MathIsValidNumber(limiarMedio) || limiarMedio <= 0.0) limiarMedio = 1.5;
    if(!MathIsValidNumber(limiarAlto) || limiarAlto <= 0.0) limiarAlto = 2.0;
@@ -47,11 +47,11 @@ bool BarraInterseccionaFaixa(double barraHigh, double barraLow, double faixaSupe
 
 bool DeveMostrarValoresZona() {
    // Chave mestre nova para evitar conflito com parâmetro legado.
-   return InpExibirValoresZona;
+   return SDV4_RegrasExibirValoresZona();
 }
 
 double ObterPosicaoVerticalTextoZona() {
-   double p = InpPosicaoVerticalTextoZona;
+   double p = SDV4_RegrasPosicaoVerticalTextoZona();
    if(!MathIsValidNumber(p)) p = 0.50;
    if(p < 0.0) p = 0.0;
    if(p > 1.0) p = 1.0;
@@ -59,15 +59,16 @@ double ObterPosicaoVerticalTextoZona() {
 }
 
 int ObterDeslocamentoTextoBarras() {
-   int d = InpDeslocamentoTextoBarras;
+   int d = SDV4_RegrasDeslocamentoTextoBarras();
    if(d < -500) d = -500;
    if(d > 500) d = 500;
    return d;
 }
 
 ENUM_ANCHOR_POINT ObterAncoraTextoZona() {
-   if(InpPosicaoHorizontalTextoZona == TEXTO_ZONA_ESQUERDA) return ANCHOR_LEFT;
-   if(InpPosicaoHorizontalTextoZona == TEXTO_ZONA_CENTRO) return ANCHOR_CENTER;
+   ENUM_POSICAO_HORIZONTAL_TEXTO_ZONA pos = SDV4_RegrasPosicaoHorizontalTextoZona();
+   if(pos == TEXTO_ZONA_ESQUERDA) return ANCHOR_LEFT;
+   if(pos == TEXTO_ZONA_CENTRO) return ANCHOR_CENTER;
    return ANCHOR_RIGHT;
 }
 
@@ -76,9 +77,10 @@ datetime ObterTempoTextoZona(const int idx, const datetime tempoFim, const int p
    if(tempoInicio <= 0) tempoInicio = tempoFim;
 
    datetime tempoBase = tempoFim;
-   if(InpPosicaoHorizontalTextoZona == TEXTO_ZONA_ESQUERDA) {
+   ENUM_POSICAO_HORIZONTAL_TEXTO_ZONA pos = SDV4_RegrasPosicaoHorizontalTextoZona();
+   if(pos == TEXTO_ZONA_ESQUERDA) {
       tempoBase = tempoInicio;
-   } else if(InpPosicaoHorizontalTextoZona == TEXTO_ZONA_CENTRO) {
+   } else if(pos == TEXTO_ZONA_CENTRO) {
       tempoBase = tempoInicio + (datetime)((tempoFim - tempoInicio) / 2);
    }
 
@@ -92,15 +94,6 @@ datetime ObterTempoTextoZona(const int idx, const datetime tempoFim, const int p
 ENUM_LINE_TYPE ObterTipoVisualZona(const int idx) {
    if(idx < 0 || idx >= g_numeroZonas) return LINE_TOP;
    return g_pivos[idx].tipo;
-}
-
-//+------------------------------------------------------------------+
-//| Criar progress bar dentro da zona                               |
-//+------------------------------------------------------------------+
-void CriarProgressBar(int pivoIndex, datetime tempoInicio, datetime tempoFim, double precoSuperior, double precoInferior) {
-   string nomeProgressBar = g_prefixo + "Progress_" + IntegerToString(pivoIndex);
-   // Progress bar removida por pedido do usuário.
-   if(ObjectFind(g_chartID, nomeProgressBar) >= 0) ObjectDelete(g_chartID, nomeProgressBar);
 }
 
 void RemoverProgressBarsResiduais() {
@@ -156,29 +149,6 @@ void RemoverObjetosOrfaosV4() {
 
       // Remove qualquer objeto legado deste prefixo (ex.: barras antigas).
       ObjectDelete(g_chartID, nome);
-   }
-}
-
-void AtualizarObjetosHibernadosAteRecuo(const int rates_total, const datetime &time[]) {
-   // Hibernacao desativada: remove qualquer objeto legado desse fluxo.
-   int total = ObjectsTotal(g_chartID);
-   for(int i = total - 1; i >= 0; i--) {
-      string nome = ObjectName(g_chartID, i);
-      if(StringFind(nome, g_prefixoHibernacao) != 0) continue;
-      ObjectDelete(g_chartID, nome);
-   }
-}
-
-//+------------------------------------------------------------------+
-//| Obter cor baseada na intensidade do volume                     |
-//+------------------------------------------------------------------+
-color ObterCorPorVolume(ENUM_VOLUME_INTENSIDADE intensidade) {
-   switch(intensidade) {
-      case VOLUME_EXTREMO: return g_palCorVolExtremo;  // Volume extremo
-      case VOLUME_ALTO:    return g_palCorVolAlto;     // Volume alto
-      case VOLUME_MEDIO:   return g_palCorVolMedio;    // Volume médio
-      case VOLUME_BAIXO:   
-      default:             return g_palCorVolBaixo;    // Volume baixo
    }
 }
 
@@ -274,7 +244,7 @@ bool VerificarRompimentosEAssentamento(int rates_total, const double &close[]) {
          }
          
          // SÓ MUDA COR após tempo de assentamento E preço estabilizado
-         if(g_pivos[i].barrasAposRompimento >= InpTempoAssentamento && precoEstabilizado) {
+         if(g_pivos[i].barrasAposRompimento >= SDV4_RegrasTempoAssentamento() && precoEstabilizado) {
             g_pivos[i].estado = PIVO_CONFIRMADO;
             g_pivos[i].precoAssentado = true;
             
@@ -283,7 +253,7 @@ bool VerificarRompimentosEAssentamento(int rates_total, const double &close[]) {
             houveMudanca = true;
             
             Print("✅ Pivô ", i+1, " confirmado após assentamento: ", g_pivos[i].preco);
-         } else if(g_pivos[i].barrasAposRompimento >= InpTempoAssentamento && !precoEstabilizado) {
+         } else if(g_pivos[i].barrasAposRompimento >= SDV4_RegrasTempoAssentamento() && !precoEstabilizado) {
             // Falso rompimento, voltar ao normal
             g_pivos[i].estado = PIVO_ATIVO;
             g_pivos[i].barrasAposRompimento = 0;
@@ -329,70 +299,6 @@ double CalcularATR(int barra, const double &high[], const double &low[], const d
    }
    
    return soma / periodo;
-}
-
-//+------------------------------------------------------------------+
-//| Distância média usando pivôs do ZigZag importado                |
-//+------------------------------------------------------------------+
-double CalcularDistanciaMediaPivosZigZagImportado(const int rates_total,
-                                                  const int idxRef,
-                                                  const datetime &time[]) {
-   if(g_zigzagHandle == INVALID_HANDLE) return 0.0;
-   if(rates_total < 3 || idxRef <= 0 || idxRef >= rates_total) return 0.0;
-
-   int maxBarras = InpZigZagMaxBarras;
-   int minBarras = ObterMinBarrasZigZagMedia();
-   if(maxBarras < minBarras) maxBarras = minBarras;
-
-   datetime diaRef = time[idxRef] - (time[idxRef] % 86400);
-   int inicio = idxRef;
-   int cont = 0;
-   while(inicio > 0 && cont < maxBarras) {
-      datetime diaPrev = time[inicio - 1] - (time[inicio - 1] % 86400);
-      if(diaPrev != diaRef) break;
-      inicio--;
-      cont++;
-   }
-
-   double pivPrices[];
-   int n = 0;
-   double ultimoValido = EMPTY_VALUE;
-
-   for(int i = inicio; i <= idxRef; i++) {
-      int shift = idxRef - i;
-      double zz1[];
-      ArrayResize(zz1, 1);
-      int copiados = CopyBuffer(g_zigzagHandle, 0, shift, 1, zz1);
-      if(copiados != 1) continue;
-
-      double valor = zz1[0];
-      if(valor == EMPTY_VALUE || valor == 0.0) continue;
-
-      // Evita duplicidade quando o mesmo pivô reaparece no mesmo nível.
-      if(ultimoValido != EMPTY_VALUE &&
-         MathAbs(valor - ultimoValido) <= ObterToleranciaDuplicidadePivotPreco())
-         continue;
-
-      ArrayResize(pivPrices, n + 1);
-      pivPrices[n] = valor;
-      n++;
-      ultimoValido = valor;
-   }
-
-   if(n < 2) return 0.0;
-
-   double somaDist = 0.0;
-   int qtdDist = 0;
-   for(int k = 1; k < n; k++) {
-      somaDist += MathAbs(pivPrices[k] - pivPrices[k - 1]);
-      qtdDist++;
-   }
-   if(qtdDist <= 0) return 0.0;
-
-   double mediaDist = somaDist / qtdDist;
-   mediaDist *= InpDistMinFatorZigZag;
-   if(mediaDist <= 0.0) return 0.0;
-   return mediaDist;
 }
 
 ENUM_LINE_TYPE DeterminarTipoPorPosicaoNoDia(const int barra, const double &high[], const double &low[]) {
@@ -482,28 +388,6 @@ ENUM_LINE_TYPE DeterminarTipoLinha(int barra, const double &high[], const double
    return DeterminarTipoPorPosicaoNoDia(barra, high, low);
 }
 
-void LimparProfile() {
-   for(int i = 0; i < 20; i++) {
-      string nomePivo = g_prefixo + "Pivo_" + IntegerToString(i);
-      string nomeTexto = nomePivo + "_Text";
-      string nomeProgress = g_prefixo + "Progress_" + IntegerToString(i);
-      
-      if(ObjectFind(g_chartID, nomePivo) >= 0) {
-         ObjectDelete(g_chartID, nomePivo);
-      }
-      
-      if(ObjectFind(g_chartID, nomeTexto) >= 0) {
-         ObjectDelete(g_chartID, nomeTexto);
-      }
-      
-      if(ObjectFind(g_chartID, nomeProgress) >= 0) {
-         ObjectDelete(g_chartID, nomeProgress);
-      }
-   }
-   
-   ChartRedraw(g_chartID);
-}
-
 //+------------------------------------------------------------------+
 //| Limpar todos os objetos                                         |
 //+------------------------------------------------------------------+
@@ -511,7 +395,7 @@ void LimparObjetos() {
    int total = ObjectsTotal(g_chartID);
    for(int i = total - 1; i >= 0; i--) {
       string nome = ObjectName(g_chartID, i);
-      if(StringFind(nome, g_prefixo) == 0 || StringFind(nome, g_prefixoHibernacao) == 0) {
+      if(StringFind(nome, g_prefixo) == 0) {
          ObjectDelete(g_chartID, nome);
       }
    }

@@ -43,12 +43,10 @@ bool SDV4_ShvedEscolherAncoraMerge(const double precoAlvo,
    precoAncora = 0.0;
    tipoAncora = LINE_TOP;
 
-   int lookback = InpShvedLookbackBarras;
-   if(lookback < 100) lookback = 100;
-   if(lookback > 5000) lookback = 5000;
+   int lookback = SDV4_RegrasShvedLookbackBarras();
 
-   int wFast = SDV4_ShvedCalcularJanelaFractal(InpShvedFractalFastFactor);
-   int wSlow = SDV4_ShvedCalcularJanelaFractal(InpShvedFractalSlowFactor);
+   int wFast = SDV4_ShvedCalcularJanelaFractal(SDV4_RegrasShvedFractalFastFactor());
+   int wSlow = SDV4_ShvedCalcularJanelaFractal(SDV4_RegrasShvedFractalSlowFactor());
    int wMax = (wFast > wSlow) ? wFast : wSlow;
 
    int barsToCopy = lookback + (wMax * 2) + 10;

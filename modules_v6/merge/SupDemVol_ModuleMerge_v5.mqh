@@ -16,8 +16,9 @@ void SDV4_ModuloMergeProcessar(const int rates_total,
 
    int idxFechada = rates_total - 2;
    if(idxFechada < 0) return;
+   if(!SDV4_RegrasPermitirEntradaModulo(SDV4_EXEC_MOD_MERGE, time[idxFechada], "MOD-MERGE")) return;
    if(g_tempoEventoVolumeConsumidoCriacao == time[idxFechada]) {
-      if(InpLogDetalhado) {
+      if(SDV4_RegrasLogDetalhadoAtivo()) {
          Print("MERGE[toque][SKIP]: barra já consumida pela criação em tempo real.");
       }
       return;
@@ -59,7 +60,7 @@ void SDV4_ModuloMergeProcessar(const int rates_total,
    }
 
    // Interseção/toque em barra fechada conta como enriquecimento da zona tocada.
-   if(totalZonasTocadas > 1 && InpLogDetalhado) {
+   if(totalZonasTocadas > 1 && SDV4_RegrasLogDetalhadoAtivo()) {
       Print("MERGE[mesma-barra][ON]: interseções enriquecem todas as zonas tocadas.");
    }
 
@@ -79,9 +80,9 @@ void SDV4_ModuloMergeProcessar(const int rates_total,
                                   tipoSombraBarra,
                                   fracaoCompraSombra,
                                   fracaoVendaSombra);
-   bool modoMixSombra = (InpModoConflitoSinalEnriquecimento == CONFLITO_SINAL_MIX_SOMBRA);
-   bool permitirEnriquecimentoPorToque = (!InpEnriquecimentoToqueSomenteAcimaBanda || barraAcimaBanda);
-   if(totalZonasTocadas > 0 && !permitirEnriquecimentoPorToque && InpLogDetalhado) {
+   bool modoMixSombra = SDV4_RegrasModoConflitoMixSombra();
+   bool permitirEnriquecimentoPorToque = (!SDV4_RegrasEnriquecimentoToqueSomenteAcimaBanda() || barraAcimaBanda);
+   if(totalZonasTocadas > 0 && !permitirEnriquecimentoPorToque && SDV4_RegrasLogDetalhadoAtivo()) {
       Print("MERGE[toque][SKIP]: toque detectado, mas enriquecimento exige volume acima da banda.");
    }
    int zonasElegiveis[20];
@@ -110,7 +111,7 @@ void SDV4_ModuloMergeProcessar(const int rates_total,
       }
    }
 
-   if(totalZonasTocadas > 0 && permitirEnriquecimentoPorToque && totalElegiveis <= 0 && InpLogDetalhado) {
+   if(totalZonasTocadas > 0 && permitirEnriquecimentoPorToque && totalElegiveis <= 0 && SDV4_RegrasLogDetalhadoAtivo()) {
       Print("MERGE[toque][SKIP]: toque detectado, mas zonas já contabilizadas nesta barra.");
    }
    if(totalElegiveis > 0 && somaPesosElegiveis <= 0.0) somaPesosElegiveis = (double)totalElegiveis;
