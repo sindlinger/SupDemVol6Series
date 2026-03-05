@@ -116,12 +116,15 @@ void RemoverObjetosOrfaosV4() {
    string nomeBalHdr = g_prefixo + "PainelBalCVHdr";
    string nomeBalBuy = g_prefixo + "PainelBalCVBuy";
    string nomeBalSell = g_prefixo + "PainelBalCVSell";
+   string tokenBookRect = g_prefixo + "BookRect_";
+   string tokenBookText = g_prefixo + "BookText_";
    for(int i = total - 1; i >= 0; i--) {
       string nome = ObjectName(g_chartID, i);
       if(StringFind(nome, g_prefixo) != 0) continue;
 
       if(nome == nomeLinhaMax || nome == nomeLinhaMin || nome == nomePainelLog ||
          nome == nomeBalHdr || nome == nomeBalBuy || nome == nomeBalSell) continue;
+      if(StringFind(nome, tokenBookRect) == 0 || StringFind(nome, tokenBookText) == 0) continue;
 
       if(StringFind(nome, tokenPivo) == 0) {
          string resto = StringSubstr(nome, StringLen(tokenPivo));
