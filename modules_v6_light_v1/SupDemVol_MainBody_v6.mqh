@@ -56,7 +56,7 @@ input bool     InpModoLowCostTotal = false;         // Modo super barato: soment
 input int      InpPeriodoMedia = 20;                // Periodo da media de volume
 input double   InpMultiplicadorDesvio = 3.5;        // Multiplicador do desvio padrao
 input bool     InpMostrarProfile = true;            // Exibe zonas no grafico
-input int      InpDiasAnalise = 1;                  // Janela principal de analise (dias)
+input int      InpDiasAnalise = 3;                  // Janela principal de analise (dias)
 input int      InpPeriodoATR = 14;                  // Periodo ATR interno (fallback tecnico)
 
 input group "02. Criacao e Merge"
@@ -74,11 +74,11 @@ input bool     InpHabilitarTravaAncora = true;      // Reaplica ancora das zonas
 
 input group "03. Organizacao Continua"
 input bool     InpOrganizacaoEmBarraFechada = true; // Roda organizacao em barra fechada
-input int      InpOrganizacaoGatilhoZonas = 7;      // A partir deste total, organiza agressivo
-input int      InpOrganizacaoLimiteDuroZonas = 10;  // Limite absoluto de zonas
+input int      InpOrganizacaoGatilhoZonas = 6;      // A partir deste total, organiza agressivo
+input int      InpOrganizacaoLimiteDuroZonas = 18;  // Limite absoluto de zonas
 input int      InpOrganizacaoAlvoNormal = 7;        // Alvo quando ha gap elegivel
-input int      InpOrganizacaoAlvoSemGap = 6;        // Alvo quando nao ha gap elegivel
-input double   InpOrganizacaoFatorGapMaiorZona = 2.0; // Gap elegivel relativo a maior zona
+input int      InpOrganizacaoAlvoSemGap = 5;        // Alvo quando nao ha gap elegivel
+input double   InpOrganizacaoFatorGapMaiorZona = 2.5; // Gap elegivel relativo a maior zona
 input int      InpOrganizacaoMaxAcoesPorBarra = 20; // Maximo de acoes por ciclo
 input double   InpShvedFractalFastFactor = 3.0;     // Fator fractal rapido (inspiracao Shved)
 input double   InpShvedFractalSlowFactor = 6.0;     // Fator fractal lento (inspiracao Shved)
@@ -109,6 +109,8 @@ input int      InpExtensaoTemporalCoordenada = 100; // Extensao horizontal para 
 input bool     InpDesenharZonaAteRecuo = true;      // Estende zona ate o recuo direito
 input bool     InpExibirFaixaVolumeDireita = false; // Exibe faixa no recuo direito
 input bool     InpExibirValoresZona = true;         // Exibe valores nas zonas
+input bool     InpDesligarArteEnriquecimentoVisual = true; // Temporario: corta updates visuais intrabar do enriquecimento
+input bool     InpDesabilitarTextosZonaTemporario = false; // Temporario: oculta os textos das zonas
 input ENUM_POSICAO_HORIZONTAL_TEXTO_ZONA InpPosicaoHorizontalTextoZona = TEXTO_ZONA_DIREITA; // Posicao horizontal dos valores
 input double   InpPosicaoVerticalTextoZona = 0.50;  // Posicao vertical dos valores (0..1)
 input int      InpDeslocamentoTextoBarras = 0;      // Deslocamento horizontal dos valores em barras
@@ -129,19 +131,19 @@ input ENUM_LINE_STYLE InpEstiloLinhaMenorMinima = STYLE_DOT; // Estilo da linha 
 input int      InpLarguraLinhaMenorMinima = 1;      // Largura da linha menor minima
 
 input group "07. Painel e Logs"
-input bool     InpExibirPainelVolume = true;        // Exibe subjanela de volume ao iniciar
-input bool     InpLogDetalhado = true;              // Log detalhado geral
-input bool     InpLogBloqueiosMerge = true;         // Log especifico de bloqueios de merge
-input bool     InpExibirLogEnriquecimentoNoGrafico = true; // Exibe ultimos eventos no chart
+input bool     InpExibirPainelVolume = false;       // Exibe subjanela de volume ao iniciar
+input bool     InpLogDetalhado = false;             // Log detalhado geral
+input bool     InpLogBloqueiosMerge = false;        // Log especifico de bloqueios de merge
+input bool     InpExibirLogEnriquecimentoNoGrafico = false; // Exibe ultimos eventos no chart
 input int      InpLinhasLogEnriquecimento = 6;      // Linhas no painel de enriquecimento
 input ENUM_POSICAO_PAINEL_LOG InpPosicaoPainelLogEnriquecimento = PAINEL_LOG_SUP_ESQ; // Canto do painel de log
 input int      InpPainelLogOffsetX = 12;            // Offset X do painel de log
 input int      InpPainelLogOffsetY = 40;            // Offset Y do painel de log
 input int      InpPainelLogFonteTamanho = 9;        // Fonte do painel de log
-input color    InpPainelLogCorTexto = clrWhite;     // Cor do painel de log
+input color    InpPainelLogCorTexto = clrBlack;     // Cor do painel de log
 input bool     InpExibirPainelBalanceCV = true;     // Exibe painel BUY/SELL geral
-input int      InpPainelBalanceOffsetX = 12;        // Offset X do painel BUY/SELL
-input int      InpPainelBalanceOffsetY = 14;        // Offset Y do painel BUY/SELL
+input int      InpPainelBalanceOffsetX = 5;         // Offset X do painel BUY/SELL
+input int      InpPainelBalanceOffsetY = 12;        // Offset Y do painel BUY/SELL
 input int      InpPainelBalanceFonteTamanho = 16;   // Fonte do painel BUY/SELL
 
 input group "08. Tecnico (Avancado)"
@@ -155,8 +157,8 @@ input double   InpVolumeRatioAlto = 2.0;            // Limiar de volume alto
 input double   InpVolumeRatioExtremo = 3.0;         // Limiar de volume extremo
 input int      InpDiasReferenciaOrigem = 2;         // Dias para score de origem
 input double   InpPesoOrigemVolume = 0.70;          // Peso de volume no score de origem
-input double   InpPesoOrigemSombra = 0.25;          // Peso da sombra no score de origem
-input double   InpPesoOrigemCorpo = 0.05;           // Peso do corpo no score de origem
+input double   InpPesoOrigemSombra = 0.30;          // Peso da sombra no score de origem
+input double   InpPesoOrigemCorpo = 0.00;           // Peso do corpo no score de origem
 input double   InpToleranciaDominioSombra = 0.05;   // Tolerancia para sombra dominante
 input int      InpBarrasExtrasHistorico = 10;       // Barras extras para liberar calculos
 input double   InpFatorAlturaMinBarraOrigem = 0.05; // Clamp minimo do fator de altura
@@ -173,7 +175,7 @@ input bool     InpLogVolumeRealFeed = false;        // Log de depuração da lei
 
 input group "10. Book Real (DOM)"
 input bool     InpBookAtivo = false;                // Ativa leitura do DOM nativo (MarketBook)
-input bool     InpBookDesenhar = true;              // Desenha niveis do book no chart principal
+input bool     InpBookDesenhar = false;             // Desenha niveis do book no chart principal
 input bool     InpBookAcumularReducaoComoExecutado = true; // Quando nivel reduz/some, acumula no preco (execucao estimada)
 input int      InpBookMaxNiveisDesenho = 40;        // Maximo de niveis desenhados por refresh
 input double   InpBookVolumeMinimoExibicao = 1.0;   // Volume minimo para exibir nivel
